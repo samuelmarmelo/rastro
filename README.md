@@ -106,6 +106,7 @@ conferido. Detalhes em `docs/ATUALIZADOR.md`.
 | [`docs/LOGS.md`](docs/LOGS.md) | logs no PostHog Logs |
 | [`docs/ATUALIZADOR.md`](docs/ATUALIZADOR.md) | atualizador assinado e instalador |
 | [`docs/RELEASE.md`](docs/RELEASE.md) | como publicar uma versão |
+| [`docs/WORDPRESS-ORG.md`](docs/WORDPRESS-ORG.md) | pacote e envio ao diretório do WordPress.org |
 
 ## Estrutura
 
@@ -114,7 +115,7 @@ conferido. Detalhes em `docs/ATUALIZADOR.md`.
 | `rastro/` | o plugin (é esta pasta que vai no zip) |
 | `tests/` | contratos Node (`validate-*.js`) e testes PHP sem WordPress (`tests/php/`) |
 | `docs/` | contrato e manuais de cada parte |
-| `tools/` | release assinada (`release.mjs`) e chave de assinatura (`chave.mjs`) |
+| `tools/` | release assinada (`release.mjs`), chave de assinatura (`chave.mjs`) e pacote do WordPress.org (`wporg.mjs`) |
 
 ## Testes
 
