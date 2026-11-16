@@ -235,6 +235,16 @@ function rastro_config_esquema(): array {
 			'extrair_content' => true,
 			'erro'            => __( 'O código de verificação da Meta tem de 20 a 64 letras ou números.', 'rastro' ),
 		),
+		'pinterest_verificacao'        => array(
+			'aba'             => 'verificacao',
+			'tipo'            => 'id',
+			'rotulo'          => __( 'Verificação do site no Pinterest', 'rastro' ),
+			'ajuda'           => __( 'No Pinterest: Configurações, Contas reivindicadas, Sites, Reivindicar, método da tag HTML. Cole o valor de content da tag p:domain_verify (ou a tag inteira: só o valor é guardado). Vazio desliga.', 'rastro' ),
+			'padrao'          => '',
+			'regex'           => '/^[A-Za-z0-9]{20,64}$/D',
+			'extrair_content' => true,
+			'erro'            => __( 'O código de verificação do Pinterest tem de 20 a 64 letras ou números.', 'rastro' ),
+		),
 		'carregamento'                 => array(
 			'aba'    => 'geral',
 			'tipo'   => 'selecao',

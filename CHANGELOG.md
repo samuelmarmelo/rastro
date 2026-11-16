@@ -17,6 +17,7 @@ Versões: [SemVer](https://semver.org/lang/pt-BR/).
 - Aba Verificações no painel, com a verificação do Google (que estava na
   aba Geral) e a verificação de domínio da Meta
   (`facebook-domain-verification`).
+- Verificação do site no Pinterest (`p:domain_verify`) na aba Verificações.
 
 ## [1.0.0] - 2026-11-16
 

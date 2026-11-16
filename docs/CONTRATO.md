@@ -159,6 +159,7 @@ rótulo, ajuda, padrão e regra. A tela, o salvar e a leitura saem dele.
 | `posthog_logs` | geral | `1` ou `0` (logs do Rastro no PostHog Logs, seção 15) | `1` |
 | `posthog_logs_console` | geral | `1` ou `0` (console do navegador nos logs) | `0` |
 | `google_verificacao` | verificacao | `^[A-Za-z0-9_-]{20,100}$` (só o valor de `content`; se colarem a tag inteira, o valor é extraído) | `''` |
+| `pinterest_verificacao` | verificacao | `^[A-Za-z0-9]{20,64}$` (meta `p:domain_verify`; tag colada vira o valor) | `''` |
 | `facebook_verificacao` | verificacao | `^[A-Za-z0-9]{20,64}$` (meta `facebook-domain-verification`; tag colada vira o valor) | `''` |
 | `carregamento` | geral | `ocioso`, `interacao` ou `imediato` | `ocioso` |
 | `eventos_loja` | eventos | `1` ou `0` | `1` |
