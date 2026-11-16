@@ -101,7 +101,8 @@ add_action(
 rastro_teste_reset( array( 'admin' => true ) );
 require $rastro_plugin;
 
-confere( 'versão', RASTRO_VERSAO, '0.1.0' );
+$versao_cabecalho = preg_match( '/^ \* Version:\s+(\S+)$/m', (string) file_get_contents( __DIR__ . '/../../rastro/rastro.php' ), $m_versao ) ? $m_versao[1] : '';
+confere( 'versão', RASTRO_VERSAO, $versao_cabecalho );
 confere( 'RASTRO_DIR com barra final', RASTRO_DIR, $rastro_dir . '/' );
 confere( 'RASTRO_URL por plugins_url, com barra final', RASTRO_URL, 'https://loja.exemplo.com.br/wp-content/plugins/rastro/' );
 confere( 'RASTRO_ARQUIVO', realpath( RASTRO_ARQUIVO ), realpath( $rastro_plugin ) );
@@ -166,7 +167,7 @@ confere( 'guarda: carregador não declarado', $c['carregar'] ?? null, false );
 confere( 'guarda: módulos não carregados', $c['esquema'] ?? null, false );
 confere( 'guarda: nada carregado', $c['carregado'] ?? null, 0 );
 $c = $cenario( 'duas_copias' );
-confere( 'duas cópias: sem erro fatal', $c['versao'] ?? null, '0.1.0' );
+confere( 'duas cópias: sem erro fatal', $c['versao'] ?? null, $versao_cabecalho );
 confere( 'duas cópias: carrega uma vez', $c['carregado'] ?? null, 1 );
 $c = $cenario( 'local_proposital' );
 confere( 'RASTRO_LOCAL liga a medição numa cópia local', $c['local'] ?? null, false );
@@ -654,7 +655,7 @@ confere( 'config do navegador: chaves base', array_keys( $nav ), array( 'versao'
 confere( 'config do navegador: página', $nav['pagina'], array( 'tipo' => 'produto', 'privada' => false, 'url' => 'https://loja.exemplo.com.br/produto/racao/' ) );
 confere( 'config do navegador: carregamento', $nav['carregamento'], 'ocioso' );
 confere( 'config do navegador: debug sem WP_DEBUG', $nav['debug'], false );
-confere( 'config do navegador: versão', $nav['versao'], '0.1.0' );
+confere( 'config do navegador: versão', $nav['versao'], $versao_cabecalho );
 
 add_filter(
 	'rastro_config_navegador',

@@ -16,13 +16,34 @@ carregadas fora do caminho crítico da página.
   WordPress 6.3 ou mais novo. WooCommerce é opcional (eventos e relatórios
   só aparecem com ele).
 
+## Instalação
+
+1. Baixe `rastro-vX.Y.Z.zip` da [última versão](https://github.com/samuelmarmelo/rastro/releases/latest).
+2. Confira, se quiser, o SHA-256 com o arquivo `.sha256` da mesma versão.
+3. No WordPress: Plugins, Adicionar, Enviar plugin. Ative e configure em
+   Rastro.
+
+Depois disso o Rastro se atualiza sozinho pelas versões publicadas aqui.
+Antes de instalar qualquer versão, o plugin confere o tamanho, o SHA-256 e a
+assinatura Ed25519 do pacote com as chaves de `rastro/atualizacao/chaves.php`.
+Para desligar a atualização automática, no `wp-config.php`:
+
+```php
+define( 'RASTRO_ATUALIZAR_AUTO', false );
+```
+
+Site que traz o Rastro embutido (tema ou plugin próprio) mostra no painel o
+botão **Instalar o Rastro**, que instala o plugin pelo mesmo caminho
+conferido. Detalhes em `docs/ATUALIZADOR.md`.
+
 ## Estrutura
 
 | Pasta | O que tem |
 |---|---|
 | `rastro/` | o plugin (é esta pasta que vai no zip) |
 | `tests/` | contratos Node (`validate-*.js`) e testes PHP sem WordPress (`tests/php/`) |
-| `docs/` | contrato (`CONTRATO.md`) e manuais de cada parte |
+| `docs/` | contrato (`CONTRATO.md`), manuais de cada parte, atualizador (`ATUALIZADOR.md`) e releases (`RELEASE.md`) |
+| `tools/` | release assinada (`release.mjs`) e chave de assinatura (`chave.mjs`) |
 
 ## Testes
 
@@ -32,12 +53,21 @@ node tests/run.js
 
 Os testes PHP rodam quando há `php` no PATH.
 
+## Publicar uma versão
+
+Ver `docs/RELEASE.md`. Resumo: subir a versão, `node tools/release.mjs --dry-run`
+e `node tools/release.mjs` na `main` limpa.
+
 ## Integração com um site
 
 Tudo que é próprio de um site (aviso de cookies que já existe, PostHog
 carregado por outro plugin, páginas privadas a mais) entra por uma ponte no
 código do site, só com os ganchos públicos `rastro_*`. Ver
 `docs/CONTRATO.md`, seção 9.
+
+## Segurança
+
+Falhas de segurança: relate em particular, como descrito em `SECURITY.md`.
 
 ## Licença
 

@@ -114,7 +114,7 @@ const plugin = ler(R + 'rastro.php');
 for (const [campo, re] of [
   ['Plugin Name', /^ \* Plugin Name:\s+Rastro$/m],
   ['Description', /^ \* Description:\s+\S.*(consentimento|relatórios).*$/m],
-  ['Version', /^ \* Version:\s+0\.1\.0$/m],
+  ['Version', /^ \* Version:\s+\d+\.\d+\.\d+$/m],
   ['Requires PHP', /^ \* Requires PHP:\s+7\.4$/m],
   ['Text Domain', /^ \* Text Domain:\s+rastro$/m],
   ['License', /^ \* License:\s+GPL-2\.0-or-later$/m],
@@ -124,7 +124,9 @@ for (const [campo, re] of [
 }
 const guarda = plugin.indexOf("if ( defined( 'RASTRO_VERSAO' ) ) {\n\treturn;\n}");
 assert.ok(guarda > 0, 'guarda do plugin próprio');
-assert.ok(guarda < plugin.indexOf("define( 'RASTRO_VERSAO', '0.1.0' );"), 'guarda antes de definir a versão');
+const versaoCabecalho = /^ \* Version:\s+(\S+)$/m.exec(plugin)[1];
+assert.ok(plugin.indexOf(`define( 'RASTRO_VERSAO', '${versaoCabecalho}' );`) > 0, 'RASTRO_VERSAO igual à Version do cabeçalho');
+assert.ok(guarda < plugin.indexOf(`define( 'RASTRO_VERSAO', '${versaoCabecalho}' );`), 'guarda antes de definir a versão');
 assert.ok(guarda < plugin.indexOf('function rastro_modulos'), 'guarda antes das funções');
 tem(plugin, "if ( ! function_exists( 'rastro_modulos' ) ) {", 'funções do carregador condicionais (duas cópias sem erro fatal)');
 tem(plugin, "define( 'RASTRO_ARQUIVO', __FILE__ );");

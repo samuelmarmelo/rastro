@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Rastro
  * Description:       Rastreamento, consentimento de cookies (LGPD) e relatórios de venda do WooCommerce por origem, com as tags carregadas fora do caminho crítico da página.
- * Version:           0.1.0
+ * Version:           1.0.0
  * Requires at least: 6.3
  * Requires PHP:      7.4
  * Author:            Samuel Neves
@@ -31,7 +31,7 @@ if ( defined( 'RASTRO_VERSAO' ) ) {
 	return;
 }
 
-define( 'RASTRO_VERSAO', '0.1.0' );
+define( 'RASTRO_VERSAO', '1.0.0' );
 define( 'RASTRO_ARQUIVO', __FILE__ );
 define( 'RASTRO_DIR', __DIR__ . '/' );
 // Funciona embutido e como plugin próprio.
