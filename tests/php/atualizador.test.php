@@ -369,6 +369,8 @@ $GLOBALS['t_site']['rastro_atualizador_release']['lido_em'] -= 700;
 $mantida = rastro_atualizador_release( true );
 confere( 'leitura falhou: mantém a última boa', array( $mantida['ok'], $mantida['versao'], count( $GLOBALS['t_pedidos'] ) ), array( true, '1.1.0', 1 ) );
 confere( 'leitura falhou: última boa por mais 30 min', $GLOBALS['t_site_ttl']['rastro_atualizador_release'], 1800 );
+$GLOBALS['t_site']['rastro_atualizador_release']['lido_em'] -= 3600;
+confere( 'leitura falhou e a boa tem mais de 1 h: some a oferta', rastro_atualizador_release( true )['ok'], false );
 
 // Sem rede e sem leitura anterior: erro, cache curto.
 $GLOBALS['t_rede'] = array();

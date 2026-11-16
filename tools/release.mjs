@@ -106,8 +106,15 @@ function falhar(msg) {
   process.exit(1);
 }
 
+/** Ambiente dos processos filhos: sem senha da chave e sem token. */
+export function ambienteLimpo(env = process.env) {
+  const limpo = { ...env };
+  for (const k of ['RASTRO_CHAVE_SENHA', 'GITHUB_TOKEN', 'GH_TOKEN']) delete limpo[k];
+  return limpo;
+}
+
 function git(args) {
-  const r = spawnSync('git', args, { cwd: raiz, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync('git', args, { cwd: raiz, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: ambienteLimpo() });
   if (r.status !== 0) falhar(`git ${args.join(' ')} falhou: ${(r.stderr || '').trim()}`);
   return (r.stdout || '').trim();
 }
@@ -121,7 +128,7 @@ async function principal() {
   const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
   if (!SECO && branch !== 'main') falhar(`release só sai da main (agora: ${branch})`);
   if (git(['status', '--porcelain'])) falhar('há mudanças locais; commite ou guarde antes');
-  const busca = spawnSync('git', ['fetch', '-q', 'origin', '--tags'], { cwd: raiz, encoding: 'utf8' });
+  const busca = spawnSync('git', ['fetch', '-q', 'origin', '--tags'], { cwd: raiz, encoding: 'utf8', env: ambienteLimpo() });
   if (busca.status !== 0 && !SECO) falhar('git fetch falhou: sem rede não há release');
   const head = git(['rev-parse', 'HEAD']);
   if (!SECO && head !== git(['rev-parse', 'origin/main'])) falhar('HEAD diferente de origin/main: faça o push antes');
@@ -143,18 +150,19 @@ async function principal() {
   if (!notas) falhar(`seção ## [${versao}] do CHANGELOG.md vazia`);
   const tag = `v${versao}`;
   if (git(['tag', '--list', tag])) falhar(`a tag ${tag} já existe: suba a versão`);
-  const remota = spawnSync('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`], { cwd: raiz, encoding: 'utf8' });
+  const remota = spawnSync('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`], { cwd: raiz, encoding: 'utf8', env: ambienteLimpo() });
   if ((remota.stdout || '').trim()) falhar(`a tag ${tag} já existe no repositório: suba a versão`);
 
   // 3. Suíte.
-  const suite = spawnSync(process.execPath, [join(raiz, 'tests', 'run.js')], { cwd: raiz, encoding: 'utf8' });
+  const suite = spawnSync(process.execPath, [join(raiz, 'tests', 'run.js')], { cwd: raiz, encoding: 'utf8', env: ambienteLimpo() });
   process.stdout.write(suite.stdout || '');
   if (suite.status !== 0) falhar('a suíte falhou; nada foi publicado');
 
   // 4. Zip.
-  const atributos = spawnSync('git', ['show', 'HEAD:.gitattributes'], { cwd: raiz, encoding: 'utf8' }).stdout || '';
-  if (/export-ignore|export-subst/.test(atributos)) falhar('.gitattributes com export-ignore ou export-subst: o zip sairia diferente da árvore');
   const arquivos = git(['ls-tree', '-r', '--name-only', 'HEAD', 'rastro']).split('\n').filter(Boolean);
+  // export-ignore e export-subst de qualquer origem (.gitattributes de qualquer pasta, .git/info/attributes).
+  const atributos = spawnSync('git', ['check-attr', '--stdin', 'export-ignore', 'export-subst'], { cwd: raiz, encoding: 'utf8', input: arquivos.join('\n') + '\n', env: ambienteLimpo() }).stdout || '';
+  if (/: export-(?:ignore|subst): (?!unspecified)/.test(atributos)) falhar('atributo export-ignore ou export-subst em arquivo de rastro/: o zip sairia diferente da árvore');
   if (git(['ls-tree', '-r', 'HEAD', 'rastro']).split('\n').some((l) => l.startsWith('120000 '))) falhar('link simbólico dentro de rastro/');
   for (const a of arquivos) {
     if (!a.startsWith('rastro/')) falhar(`arquivo fora da pasta do plugin: ${a}`);
@@ -200,7 +208,7 @@ async function principal() {
   const TOKEN = (() => {
     if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN.trim();
     if (process.env.GH_TOKEN) return process.env.GH_TOKEN.trim();
-    const r = spawnSync('git', ['credential', 'fill'], { input: 'protocol=https\nhost=github.com\n\n', encoding: 'utf8' });
+    const r = spawnSync('git', ['credential', 'fill'], { input: 'protocol=https\nhost=github.com\n\n', encoding: 'utf8', env: ambienteLimpo() });
     const m = /^password=(.+)$/m.exec(r.stdout || '');
     if (!m) falhar('sem token: defina GITHUB_TOKEN');
     return m[1].trim();
@@ -267,9 +275,26 @@ async function principal() {
   const publicada = await api('PATCH', `/repos/${REPO}/releases/${release.id}`, JSON.stringify({ draft: false, make_latest: 'true', tag_name: tag, target_commitish: head }), { 'Content-Type': 'application/json' });
   console.log(`release: publicada ${publicada.html_url}`);
 
-  // 7. Conferência pública: o que os sites vão baixar, sem token.
-  try {
-    const publica = await (await fetch(`${API}/repos/${REPO}/releases/tags/${tag}`, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'rastro-release' } })).json();
+  // 7. Conferência pública: o que os sites vão baixar, sem token. Até 3
+  // tentativas com espera: logo depois de publicar a API pode demorar.
+  let ultimoErro = null;
+  for (let tentativa = 1; tentativa <= 3; tentativa++) {
+    if (tentativa > 1) await new Promise((ok) => setTimeout(ok, 10000));
+    try {
+      await conferirPublica();
+      console.log('release: conferida como os sites vão baixar (SHA-256 e assinatura)');
+      return;
+    } catch (erro) {
+      ultimoErro = erro;
+      console.warn(`release: conferência pública, tentativa ${tentativa} de 3: ${erro.message}`);
+    }
+  }
+  falhar(`ATENÇÃO: a versão ${tag} foi publicada mas não passou na conferência pública (${ultimoErro.message}). Os sites recusam um pacote que não confere, então nada ruim é instalado. Confira no GitHub; se o pacote estiver errado, apague a versão ${tag} (a tag fica reservada) e publique uma versão maior.`);
+
+  async function conferirPublica() {
+    const resposta = await fetch(`${API}/repos/${REPO}/releases/tags/${tag}`, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'rastro-release' } });
+    if (!resposta.ok) throw new Error(`a API respondeu ${resposta.status}`);
+    const publica = await resposta.json();
     const baixarPublico = async (nome) => {
       const url = `https://github.com/${REPO}/releases/download/${tag}/${nome}`;
       const a = (publica.assets || []).find((x) => x.name === nome);
@@ -287,9 +312,6 @@ async function principal() {
     const sigPublica = (await baixarPublico(`${nomeZip}.sig`)).toString('utf8').trim();
     if (hexPublico !== hex || shaPublico !== conteudoHash.toString('utf8')) throw new Error('SHA-256 público diferente do local');
     if (!verify(null, Buffer.from(mensagemAssinada(tag, nomeZip, hexPublico), 'utf8'), createPublicKey(chave), Buffer.from(sigPublica, 'hex'))) throw new Error('assinatura pública não confere');
-    console.log('release: conferida como os sites vão baixar (SHA-256 e assinatura)');
-  } catch (erro) {
-    falhar(`ATENÇÃO: a versão ${tag} foi publicada mas não passou na conferência pública (${erro.message}). Apague a versão ${tag} no GitHub agora e publique outra.`);
   }
 }
 

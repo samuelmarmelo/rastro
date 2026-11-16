@@ -64,6 +64,9 @@ const RASTRO_ATUALIZADOR_CACHE_ERRO = 1800;
 /** Leitura boa com menos que isto (s) vale também para o download. */
 const RASTRO_ATUALIZADOR_RECENTE = 600;
 
+/** Com a leitura falhando, a última leitura boa vale até esta idade (s), nunca mais. */
+const RASTRO_ATUALIZADOR_TETO_ANTIGA = 3600;
+
 /**
  * Atualização automática só de versão publicada há pelo menos isto (s):
  * janela para tirar do ar uma versão ruim antes que os sites a instalem
@@ -460,9 +463,9 @@ function rastro_atualizador_buscar_release(): array {
  *
  * A leitura anônima tem limite por IP (hospedagem compartilhada divide o
  * IP): `$forcar` só lê de novo quando a última leitura boa tem mais de
- * 10 min, e uma falha da leitura mantém a última leitura boa por mais
- * 30 min em vez de sumir com a oferta. O pacote é conferido por assinatura
- * de qualquer jeito.
+ * 10 min, e uma falha da leitura mantém a última leitura boa (com até 1 h
+ * de idade) em vez de sumir com a oferta. O pacote é conferido por
+ * assinatura de qualquer jeito.
  *
  * @param bool $forcar Lê de novo (salvo leitura boa recente).
  * @return array
@@ -486,7 +489,8 @@ function rastro_atualizador_release( bool $forcar = false ): array {
 	}
 	$release['lido_em'] = time();
 
-	if ( empty( $release['ok'] ) && $valida && ! empty( $guardada['ok'] ) ) {
+	$antiga_vale = $valida && ! empty( $guardada['ok'] ) && isset( $guardada['lido_em'] ) && time() - (int) $guardada['lido_em'] < RASTRO_ATUALIZADOR_TETO_ANTIGA;
+	if ( empty( $release['ok'] ) && $antiga_vale ) {
 		set_site_transient( RASTRO_ATUALIZADOR_CACHE, $guardada, RASTRO_ATUALIZADOR_CACHE_ERRO );
 		return $guardada;
 	}

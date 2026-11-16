@@ -24,7 +24,7 @@ chamar o filtro `update_plugins_github.com` para este plugin.
    seguir redirecionamento. Cache de 6 h (erro: 30 min); "Verificar
    novamente" em Painel, Atualizações limpa o cache. A leitura anônima tem
    limite por IP: quando ela falha, a última leitura boa continua valendo
-   por mais 30 min. Sem a extensão sodium (nem o sodium_compat do
+   por mais 30 min, desde que tenha no máximo 1 h de idade. Sem a extensão sodium (nem o sodium_compat do
    WordPress), nada é oferecido. A versão só vale com
    tag `vX.Y.Z`, publicada (não rascunho nem pré-versão) e os três arquivos
    (`rastro-vX.Y.Z.zip`, `.sha256`, `.sig`) enviados, cada um uma vez, no
@@ -54,8 +54,9 @@ chamar o filtro `update_plugins_github.com` para este plugin.
    e a conferência vale para uma pasta só (é apagada ao ser usada);
    a pasta extraída vira `rastro/` e o cabeçalho precisa ter
    `Plugin Name: Rastro` e a `Version` conferida.
-5. **Automático** (`auto_update_plugin`): na primeira vez no painel, o
-   Rastro entra na lista de atualização automática do site; depois vale a
+5. **Automático** (`auto_update_plugin`): na primeira vez que alguém com
+   `update_plugins` abre o painel, o Rastro entra na lista de atualização
+   automática do site (antes disso, nada é automático); depois vale a
    escolha de quem administra (link "Desativar atualizações automáticas" na
    tela Plugins), e o Rastro nunca a desfaz. Mesmo ligada, a atualização
    automática só instala versão publicada há 48 h ou mais: janela para tirar

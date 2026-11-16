@@ -38,8 +38,10 @@ uma versão não serve para outra.
   sincronizada com a nuvem (a ferramenta recusa, inclusive por junction ou
   link): `RASTRO_CHAVE_ASSINATURA` ou
   `~/.rastro/chave-assinatura-ed25519.pem` (`node tools/chave.mjs gerar`).
-- Com senha (PKCS#8, AES-256): `RASTRO_CHAVE_SENHA` com 16 caracteres ou
-  mais e `node tools/chave.mjs proteger`. A release pede a mesma variável
+- Com senha: `RASTRO_CHAVE_SENHA` com 16 caracteres ou mais e
+  `node tools/chave.mjs proteger` (scrypt N 2^17 deriva a chave de
+  AES-256-GCM; arquivo `rastro-chave-v1`). A senha e o token nunca chegam
+  aos processos que a release abre (testes, git). A release pede a mesma variável
   para assinar. Guarde a chave e a senha num cofre de senhas, separadas.
 - Chaves públicas confiáveis (32 bytes em hex minúsculo):
   `rastro_atualizador_chaves()` em `rastro/atualizacao/chaves.php`. A release recusa assinar com chave que
@@ -74,8 +76,10 @@ arquivo de desenvolvimento no zip, zip acima de 5 MB, chave fora da lista.
 Depois de enviar, confere nome, tamanho e SHA-256 de cada arquivo no
 rascunho (pelo `digest` da API ou baixando o arquivo) e só então publica
 como a versão mais recente. Por fim baixa a versão publicada como um site
-baixaria, sem token, e confere SHA-256 e assinatura; se falhar, avisa para
-apagar a versão na hora.
+baixaria, sem token, e confere SHA-256 e assinatura (até 3 tentativas);
+se falhar, avisa. Os sites recusam pacote que não confere; com versões
+imutáveis, a saída é apagar a versão (a tag fica reservada) e publicar uma
+versão maior.
 
 Token: `GITHUB_TOKEN`, `GH_TOKEN` ou o do Git (`git credential fill`), com
 escrita em Contents. Nunca é impresso nem gravado.
