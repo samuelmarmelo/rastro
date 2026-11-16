@@ -32,7 +32,8 @@ if ( ! function_exists( 'rastro_atualizador_plugin_proprio' ) || rastro_atualiza
 const RASTRO_INSTALADOR_ACAO = 'rastro_instalar_plugin';
 
 /**
- * Situação do plugin próprio: 'ativo', 'inativo' (instalado) ou 'ausente'.
+ * Situação do plugin próprio: 'ativo', 'inativo' (instalado), 'ausente' ou
+ * 'conflito' (a pasta rastro/ tem outro plugin).
  *
  * @return string
  */
@@ -45,7 +46,13 @@ function rastro_instalador_estado(): string {
 		return 'ativo';
 	}
 
-	return is_readable( trailingslashit( WP_PLUGIN_DIR ) . RASTRO_ATUALIZADOR_PLUGIN ) ? 'inativo' : 'ausente';
+	$arquivo = trailingslashit( WP_PLUGIN_DIR ) . RASTRO_ATUALIZADOR_PLUGIN;
+	if ( ! is_readable( $arquivo ) ) {
+		return 'ausente';
+	}
+	$dados = get_file_data( $arquivo, array( 'nome' => 'Plugin Name' ) );
+
+	return isset( $dados['nome'] ) && RASTRO_ATUALIZADOR_NOME === $dados['nome'] ? 'inativo' : 'conflito';
 }
 
 /**
@@ -134,6 +141,14 @@ function rastro_instalador_aviso() {
 
 		$estado = rastro_instalador_estado();
 		if ( 'ativo' === $estado ) {
+			// O plugin próprio está ativo, mas quem roda é esta cópia embutida
+			// (carregada antes): o plugin próprio fica parado e sem atualização.
+			echo '<div class="notice notice-warning"><p><strong>' . esc_html__( 'Rastro: o plugin próprio está ativo, mas parado.', 'rastro' ) . '</strong> ';
+			echo esc_html__( 'Uma cópia embutida do Rastro em outro plugin carrega antes dele, então as atualizações assinadas não chegam. Desative o plugin que traz a cópia embutida ou peça ao autor para carregá-la só quando o plugin próprio não estiver ativo.', 'rastro' ) . '</p></div>';
+			return;
+		}
+		if ( 'conflito' === $estado ) {
+			echo '<div class="notice notice-warning"><p>' . esc_html__( 'Rastro: a pasta de plugins rastro/ tem outro plugin com o mesmo nome de pasta. O plugin Rastro não pode ser instalado enquanto ela estiver ocupada.', 'rastro' ) . '</p></div>';
 			return;
 		}
 

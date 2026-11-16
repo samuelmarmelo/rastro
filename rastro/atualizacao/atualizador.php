@@ -20,8 +20,9 @@
  * - `upgrader_source_selection`: na atualização do Rastro, a pasta vira
  *   `rastro/` e o cabeçalho precisa ter `Plugin Name: Rastro` e a `Version`
  *   conferida. Pacote que não passou pela conferência é recusado.
- * - `auto_update_plugin`: ligado para o Rastro, salvo
- *   `RASTRO_ATUALIZAR_AUTO === false` no wp-config.php.
+ * - `auto_update_plugin`: vale a escolha do site na tela Plugins (o Rastro
+ *   entra ligado uma vez); automático só para versão publicada há 48 h ou
+ *   mais; `RASTRO_ATUALIZAR_AUTO === false` desliga de vez.
  * - `plugins_api`: modal "Ver detalhes" com as notas da versão escapadas.
  *
  * SafeWidget: toda falha vira WP_Error ou a oferta some; nunca erro fatal.
@@ -59,6 +60,19 @@ const RASTRO_ATUALIZADOR_CACHE = 'rastro_atualizador_release';
 /** Cache da leitura com sucesso e com erro, em segundos. */
 const RASTRO_ATUALIZADOR_CACHE_OK   = 21600;
 const RASTRO_ATUALIZADOR_CACHE_ERRO = 1800;
+
+/** Leitura boa com menos que isto (s) vale também para o download. */
+const RASTRO_ATUALIZADOR_RECENTE = 600;
+
+/**
+ * Atualização automática só de versão publicada há pelo menos isto (s):
+ * janela para tirar do ar uma versão ruim antes que os sites a instalem
+ * sozinhos. A atualização pelo botão não espera.
+ */
+const RASTRO_ATUALIZADOR_ESPERA_AUTO = 172800;
+
+/** Opção de site: o Rastro já entrou uma vez na lista de atualização automática. */
+const RASTRO_ATUALIZADOR_OPCAO_AUTO = 'rastro_atualizador_auto_padrao';
 
 /** Limites em bytes: zip (igual ao de tools/release.mjs), .sha256/.sig e resposta da API. */
 const RASTRO_ATUALIZADOR_LIMITE       = 5242880;
@@ -110,6 +124,26 @@ function rastro_atualizador_nome_zip( string $tag ): string {
  */
 function rastro_atualizador_mensagem( string $tag, string $arquivo, string $hex ): string {
 	return "rastro-release-v1\ntag: {$tag}\narquivo: {$arquivo}\nsha256: {$hex}\n";
+}
+
+/**
+ * Corta um texto em até $bytes sem partir um caractere UTF-8.
+ *
+ * @param string $texto Texto.
+ * @param int    $bytes Limite.
+ * @return string
+ */
+function rastro_atualizador_cortar( string $texto, int $bytes ): string {
+	if ( strlen( $texto ) <= $bytes ) {
+		return $texto;
+	}
+	if ( function_exists( 'mb_strcut' ) ) {
+		return mb_strcut( $texto, 0, $bytes, 'UTF-8' );
+	}
+
+	$corte = substr( $texto, 0, $bytes );
+	// Tira bytes de continuação soltos no fim (10xxxxxx) e o início sem par.
+	return (string) preg_replace( '/[\xC0-\xFF][\x80-\xBF]*$/', '', $corte );
 }
 
 /**
@@ -208,15 +242,16 @@ function rastro_atualizador_regra_release( $dados ): array {
 		'zip'    => $achados['zip'],
 		'sha256' => $achados['sha256'],
 		'sig'    => $achados['sig'],
-		'notas'  => isset( $dados['body'] ) && is_string( $dados['body'] ) ? substr( $dados['body'], 0, 20000 ) : '',
+		'notas'  => isset( $dados['body'] ) && is_string( $dados['body'] ) ? rastro_atualizador_cortar( $dados['body'], 20000 ) : '',
 		'data'   => $data,
 	);
 }
 
 /**
  * Regra pura: o destino do redirecionamento do download é aceito? Só https,
- * sem usuário, senha ou porta diferente de 443, num host
- * `<nome>.githubusercontent.com`.
+ * sem usuário, senha ou porta diferente de 443, num dos hosts de arquivo de
+ * versão (`release-assets`, `objects` ou `github-releases`
+ * `.githubusercontent.com`).
  *
  * @param mixed $url Endereço do cabeçalho Location.
  * @return bool
@@ -234,7 +269,7 @@ function rastro_atualizador_regra_destino( $url ): bool {
 		return false;
 	}
 
-	return 1 === preg_match( '/^[a-z0-9-]{1,63}\.githubusercontent\.com$/D', strtolower( (string) $partes['host'] ) );
+	return 1 === preg_match( '/^(?:release-assets|objects|github-releases)\.githubusercontent\.com$/D', strtolower( (string) $partes['host'] ) );
 }
 
 /**
@@ -359,6 +394,7 @@ function rastro_atualizador_texto_erro( string $codigo ): string {
 		'checksum'   => __( 'O pacote baixado não confere com o checksum publicado. Nada foi instalado.', 'rastro' ),
 		'assinatura' => __( 'A assinatura do pacote não confere com as chaves do Rastro. Nada foi instalado.', 'rastro' ),
 		'pacote'     => __( 'O pacote não é o Rastro da versão conferida. Nada foi instalado.', 'rastro' ),
+		'sodium'     => __( 'Este servidor não tem como conferir a assinatura do pacote (extensão sodium do PHP ausente). Nada foi instalado; peça à hospedagem para ativar a extensão sodium.', 'rastro' ),
 	);
 
 	return isset( $textos[ $codigo ] ) ? $textos[ $codigo ] : $textos['download'];
@@ -422,15 +458,21 @@ function rastro_atualizador_buscar_release(): array {
 /**
  * Última versão publicada, com cache.
  *
- * @param bool $forcar Ignora o cache.
+ * A leitura anônima tem limite por IP (hospedagem compartilhada divide o
+ * IP): `$forcar` só lê de novo quando a última leitura boa tem mais de
+ * 10 min, e uma falha da leitura mantém a última leitura boa por mais
+ * 30 min em vez de sumir com a oferta. O pacote é conferido por assinatura
+ * de qualquer jeito.
+ *
+ * @param bool $forcar Lê de novo (salvo leitura boa recente).
  * @return array
  */
 function rastro_atualizador_release( bool $forcar = false ): array {
-	if ( ! $forcar ) {
-		$guardada = get_site_transient( RASTRO_ATUALIZADOR_CACHE );
-		if ( is_array( $guardada ) && isset( $guardada['ok'] ) ) {
-			return $guardada;
-		}
+	$guardada = get_site_transient( RASTRO_ATUALIZADOR_CACHE );
+	$valida   = is_array( $guardada ) && isset( $guardada['ok'] );
+	$recente  = $valida && ! empty( $guardada['ok'] ) && isset( $guardada['lido_em'] ) && time() - (int) $guardada['lido_em'] < RASTRO_ATUALIZADOR_RECENTE;
+	if ( $valida && ( ! $forcar || $recente ) ) {
+		return $guardada;
 	}
 
 	try {
@@ -441,6 +483,12 @@ function rastro_atualizador_release( bool $forcar = false ): array {
 			'ok'   => false,
 			'erro' => 'rede',
 		);
+	}
+	$release['lido_em'] = time();
+
+	if ( empty( $release['ok'] ) && $valida && ! empty( $guardada['ok'] ) ) {
+		set_site_transient( RASTRO_ATUALIZADOR_CACHE, $guardada, RASTRO_ATUALIZADOR_CACHE_ERRO );
+		return $guardada;
 	}
 	set_site_transient( RASTRO_ATUALIZADOR_CACHE, $release, $release['ok'] ? RASTRO_ATUALIZADOR_CACHE_OK : RASTRO_ATUALIZADOR_CACHE_ERRO );
 
@@ -564,9 +612,11 @@ function rastro_atualizador_baixar_conferido( array $release ) {
 }
 
 /**
- * Versão conferida no download em curso (lida na seleção da pasta).
+ * Versão conferida no download em curso. Vale uma vez: a seleção da pasta
+ * lê e apaga (rastro_atualizador_consumir_esperada), e todo download novo
+ * começa apagando.
  *
- * @param string|null $versao Grava quando informada.
+ * @param string|null $versao Grava quando informada ('' apaga).
  * @return string
  */
 function rastro_atualizador_esperada( $versao = null ): string {
@@ -576,6 +626,35 @@ function rastro_atualizador_esperada( $versao = null ): string {
 	}
 
 	return $esperada;
+}
+
+/**
+ * Lê e apaga a versão conferida.
+ *
+ * @return string
+ */
+function rastro_atualizador_consumir_esperada(): string {
+	$esperada = rastro_atualizador_esperada();
+	rastro_atualizador_esperada( '' );
+
+	return $esperada;
+}
+
+/**
+ * Regra pura: a versão foi publicada há pelo menos $espera segundos?
+ *
+ * @param mixed $data   published_at (AAAA-MM-DDTHH:MM:SSZ).
+ * @param int   $agora  Agora (timestamp).
+ * @param int   $espera Segundos.
+ * @return bool
+ */
+function rastro_atualizador_regra_espera( $data, int $agora, int $espera ): bool {
+	if ( ! is_string( $data ) || 1 !== preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/D', $data ) ) {
+		return false;
+	}
+	$publicada = strtotime( $data );
+
+	return false !== $publicada && $agora - $publicada >= $espera;
 }
 
 /**
@@ -643,6 +722,11 @@ function rastro_atualizador_oferta( $update, $dados_plugin = array(), $arquivo =
 		return $update;
 	}
 
+	// Sem como conferir a assinatura, não há o que oferecer.
+	if ( ! rastro_atualizador_sodium() ) {
+		return $update;
+	}
+
 	$release = rastro_atualizador_release();
 	if ( empty( $release['ok'] ) ) {
 		return $update;
@@ -677,7 +761,13 @@ function rastro_atualizador_pre_download( $reply, $package, $upgrader = null, $h
 		return $reply;
 	}
 
+	// Download novo: nenhuma conferência anterior vale para ele.
+	rastro_atualizador_esperada( '' );
+
 	try {
+		if ( ! rastro_atualizador_sodium() ) {
+			return rastro_atualizador_erro( 'sodium' );
+		}
 		$release = rastro_atualizador_release( true );
 		if ( empty( $release['ok'] ) || $release['zip']['url'] . RASTRO_ATUALIZADOR_MARCA !== $package ) {
 			return rastro_atualizador_erro( 'versao' );
@@ -713,7 +803,7 @@ function rastro_atualizador_selecionar_pasta( $source, $remote_source, $upgrader
 		return $source;
 	}
 
-	$esperada = rastro_atualizador_esperada();
+	$esperada = rastro_atualizador_consumir_esperada();
 	if ( '' === $esperada ) {
 		return rastro_atualizador_erro( 'pacote' );
 	}
@@ -722,10 +812,13 @@ function rastro_atualizador_selecionar_pasta( $source, $remote_source, $upgrader
 }
 
 /**
- * auto_update_plugin: o Rastro se atualiza sozinho, salvo
- * `define( 'RASTRO_ATUALIZAR_AUTO', false );`.
+ * auto_update_plugin: vale a escolha do site (link "Ativar/Desativar
+ * atualizações automáticas" na tela Plugins; o Rastro entra ligado uma vez,
+ * rastro_atualizador_auto_padrao). Mesmo ligada, a atualização automática
+ * só instala versão publicada há 48 h ou mais. Com
+ * `define( 'RASTRO_ATUALIZAR_AUTO', false );` fica sempre desligada.
  *
- * @param mixed $atualizar Decisão anterior.
+ * @param mixed $atualizar Decisão do WordPress (null quando só pergunta se é forçada).
  * @param mixed $item      Item da atualização.
  * @return mixed
  */
@@ -735,10 +828,45 @@ function rastro_atualizador_auto( $atualizar, $item = null ) {
 		return $atualizar;
 	}
 	if ( defined( 'RASTRO_ATUALIZAR_AUTO' ) && false === RASTRO_ATUALIZAR_AUTO ) {
+		return false;
+	}
+	if ( true !== $atualizar ) {
 		return $atualizar;
 	}
 
+	$release = rastro_atualizador_release();
+	if ( empty( $release['ok'] ) || ! rastro_atualizador_regra_espera( isset( $release['data'] ) ? $release['data'] : '', time(), RASTRO_ATUALIZADOR_ESPERA_AUTO ) ) {
+		return false;
+	}
+
 	return true;
+}
+
+/**
+ * admin_init: na primeira vez, põe o Rastro na lista de atualização
+ * automática do site (opção do WordPress `auto_update_plugins`). Depois, a
+ * escolha é de quem administra o site e nunca é desfeita aqui.
+ *
+ * @return void
+ */
+function rastro_atualizador_auto_padrao() {
+	try {
+		if ( '' !== (string) get_site_option( RASTRO_ATUALIZADOR_OPCAO_AUTO, '' ) || ! current_user_can( 'update_plugins' ) ) {
+			return;
+		}
+		if ( defined( 'RASTRO_ATUALIZAR_AUTO' ) && false === RASTRO_ATUALIZAR_AUTO ) {
+			return;
+		}
+		$lista = get_site_option( 'auto_update_plugins', array() );
+		$lista = is_array( $lista ) ? $lista : array();
+		if ( ! in_array( RASTRO_ATUALIZADOR_PLUGIN, $lista, true ) ) {
+			$lista[] = RASTRO_ATUALIZADOR_PLUGIN;
+			update_site_option( 'auto_update_plugins', array_values( array_unique( $lista ) ) );
+		}
+		update_site_option( RASTRO_ATUALIZADOR_OPCAO_AUTO, gmdate( 'c' ) );
+	} catch ( \Throwable $erro ) {
+		do_action( 'rastro_falha', 'atualizacao-auto', $erro );
+	}
 }
 
 /**
@@ -795,4 +923,5 @@ if ( rastro_atualizador_plugin_proprio() ) {
 	add_filter( 'auto_update_plugin', 'rastro_atualizador_auto', 10, 2 );
 	add_filter( 'plugins_api', 'rastro_atualizador_detalhes', 20, 3 );
 	add_action( 'load-update-core.php', 'rastro_atualizador_verificar_agora' );
+	add_action( 'admin_init', 'rastro_atualizador_auto_padrao' );
 }

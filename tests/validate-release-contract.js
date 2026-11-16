@@ -87,7 +87,12 @@ function rastro_atualizador_chaves() {
     'LIMITE = 5 * 1024 * 1024',
     'chavesConfiaveis(',
     'draft: true',
-    "a.state === 'uploaded'",
+    "x.state === 'uploaded'",
+    'entradasDoZip(zip)',
+    'export-ignore|export-subst',
+    'baixarDoRascunho(',
+    '7. Conferência pública',
+    'versaoValida(versao)',
     "make_latest: 'true'",
   ]) {
     tem(fonte, trecho, `release.mjs: ${trecho}`);

@@ -59,6 +59,41 @@ export function chavesConfiaveis(php) {
   return [...corpo[1].matchAll(/'([0-9a-f]{64})'/g)].map((m) => m[1]);
 }
 
+/** Versão X.Y.Z no mesmo formato que o plugin aceita (rastro_atualizador_versao_valida). */
+export function versaoValida(v) {
+  return typeof v === 'string' && /^(?:0|[1-9]\d{0,3})\.(?:0|[1-9]\d{0,3})\.(?:0|[1-9]\d{0,3})$/.test(v);
+}
+
+/** Host aceito para o link assinado de um arquivo de versão. */
+export const DESTINO = /^https:\/\/(?:release-assets|objects|github-releases)\.githubusercontent\.com\//;
+
+/**
+ * Nomes das entradas de um zip (diretório central), recusando link. Serve
+ * para conferir o zip gerado, não a árvore do Git.
+ */
+export function entradasDoZip(zip) {
+  let fim = -1;
+  for (let i = zip.length - 22; i >= Math.max(0, zip.length - 65557); i--) {
+    if (zip.readUInt32LE(i) === 0x06054b50) { fim = i; break; }
+  }
+  if (fim < 0) throw new Error('zip sem diretório central');
+  const total = zip.readUInt16LE(fim + 10);
+  let p = zip.readUInt32LE(fim + 16);
+  const nomes = [];
+  for (let n = 0; n < total; n++) {
+    if (zip.readUInt32LE(p) !== 0x02014b50) throw new Error('entrada do zip inválida');
+    const lenNome = zip.readUInt16LE(p + 28);
+    const lenExtra = zip.readUInt16LE(p + 30);
+    const lenComent = zip.readUInt16LE(p + 32);
+    const tipo = (zip.readUInt32LE(p + 38) >>> 16) & 0o170000;
+    const nome = zip.subarray(p + 46, p + 46 + lenNome).toString('utf8');
+    if (tipo === 0o120000) throw new Error(`link no zip: ${nome}`);
+    nomes.push(nome);
+    p += 46 + lenNome + lenExtra + lenComent;
+  }
+  return nomes;
+}
+
 /** Arquivo do repositório que não pode ir no zip (caminho a partir de rastro/). */
 export function proibidoNoZip(relativo) {
   return /(^|\/)(tests?|node_modules|\.github|docs|tools)\//.test(relativo)
@@ -94,7 +129,7 @@ async function principal() {
   // 2. Versão.
   const plugin = ler('rastro/rastro.php');
   const versao = (/^ \* Version:\s+(\S+)$/m.exec(plugin) || [])[1] || '';
-  if (!/^\d+\.\d+\.\d+$/.test(versao)) falhar(`Version inválida em rastro/rastro.php: "${versao}"`);
+  if (!versaoValida(versao)) falhar(`Version inválida em rastro/rastro.php: "${versao}"`);
   const constante = (/define\( 'RASTRO_VERSAO', '([^']+)' \);/.exec(plugin) || [])[1];
   if (constante !== versao) falhar(`RASTRO_VERSAO (${constante}) diferente de Version (${versao})`);
   const estavel = (/^Stable tag:\s*(\S+)$/m.exec(ler('rastro/readme.txt')) || [])[1];
@@ -117,7 +152,10 @@ async function principal() {
   if (suite.status !== 0) falhar('a suíte falhou; nada foi publicado');
 
   // 4. Zip.
+  const atributos = spawnSync('git', ['show', 'HEAD:.gitattributes'], { cwd: raiz, encoding: 'utf8' }).stdout || '';
+  if (/export-ignore|export-subst/.test(atributos)) falhar('.gitattributes com export-ignore ou export-subst: o zip sairia diferente da árvore');
   const arquivos = git(['ls-tree', '-r', '--name-only', 'HEAD', 'rastro']).split('\n').filter(Boolean);
+  if (git(['ls-tree', '-r', 'HEAD', 'rastro']).split('\n').some((l) => l.startsWith('120000 '))) falhar('link simbólico dentro de rastro/');
   for (const a of arquivos) {
     if (!a.startsWith('rastro/')) falhar(`arquivo fora da pasta do plugin: ${a}`);
     if (proibidoNoZip(a.slice('rastro/'.length))) falhar(`arquivo proibido no zip: ${a}`);
@@ -132,6 +170,8 @@ async function principal() {
   const zip = readFileSync(caminhoZip);
   if (zip.length > LIMITE) falhar(`zip com ${zip.length} bytes passa do limite de ${LIMITE}`);
   if (zip.length < 1024) falhar('zip pequeno demais');
+  const doZip = entradasDoZip(zip).filter((n) => !n.endsWith('/')).sort();
+  if (JSON.stringify(doZip) !== JSON.stringify([...arquivos].sort())) falhar('a lista de arquivos do zip gerado é diferente da árvore rastro/');
 
   // 5. Checksum e assinatura.
   const hex = createHash('sha256').update(zip).digest('hex');
@@ -187,11 +227,23 @@ async function principal() {
   }
 
   const digestDe = (a) => (a && typeof a.digest === 'string' ? a.digest : '');
+
+  /** Baixa um arquivo do rascunho: token só para a API, o link assinado sem token. */
+  async function baixarDoRascunho(id) {
+    const r = await fetch(`${API}/repos/${REPO}/releases/assets/${id}`, { redirect: 'manual', headers: { Authorization: `Bearer ${TOKEN}`, Accept: 'application/octet-stream', 'User-Agent': 'rastro-release' } });
+    if (r.status === 200) return Buffer.from(await r.arrayBuffer());
+    const local = r.headers.get('location') || '';
+    if (!DESTINO.test(local)) falhar('download do rascunho com redirecionamento inesperado');
+    const d = await fetch(local, { redirect: 'error', headers: { 'User-Agent': 'rastro-release' } });
+    if (!d.ok) falhar(`download do rascunho respondeu ${d.status}`);
+    return Buffer.from(await d.arrayBuffer());
+  }
   async function enviar(nome, conteudo, tipo) {
     const esperado = `sha256:${createHash('sha256').update(conteudo).digest('hex')}`;
     const atual = (release.assets || []).find((a) => a.name === nome);
     if (atual) {
-      if (atual.size === conteudo.length && (!digestDe(atual) || digestDe(atual) === esperado)) return;
+      if (atual.size === conteudo.length && digestDe(atual) === esperado) return;
+      if (atual.size === conteudo.length && !digestDe(atual) && (await baixarDoRascunho(atual.id)).equals(conteudo)) return;
       falhar(`o rascunho ${tag} já tem ${nome} diferente do local; confira no GitHub antes de tentar de novo`);
     }
     const asset = await api('POST', `${UPLOADS}/repos/${REPO}/releases/${release.id}/assets?name=${encodeURIComponent(nome)}`, conteudo, { 'Content-Type': tipo, 'Content-Length': String(conteudo.length) });
@@ -203,11 +255,42 @@ async function principal() {
   await enviar(`${nomeZip}.sig`, conteudoSig, 'text/plain');
 
   const conferida = await api('GET', `/repos/${REPO}/releases/${release.id}`);
-  for (const nome of [nomeZip, `${nomeZip}.sha256`, `${nomeZip}.sig`]) {
-    if (!(conferida.assets || []).some((a) => a.name === nome && a.state === 'uploaded')) falhar(`falta ${nome} no rascunho; nada foi publicado`);
+  const locais = { [nomeZip]: zip, [`${nomeZip}.sha256`]: conteudoHash, [`${nomeZip}.sig`]: conteudoSig };
+  for (const [nome, conteudo] of Object.entries(locais)) {
+    const a = (conferida.assets || []).find((x) => x.name === nome && x.state === 'uploaded');
+    if (!a) falhar(`falta ${nome} no rascunho; nada foi publicado`);
+    if (a.size !== conteudo.length) falhar(`${nome} no rascunho com tamanho diferente; nada foi publicado`);
+    const esperado = `sha256:${createHash('sha256').update(conteudo).digest('hex')}`;
+    const igual = digestDe(a) ? digestDe(a) === esperado : (await baixarDoRascunho(a.id)).equals(conteudo);
+    if (!igual) falhar(`${nome} no rascunho diferente do local; nada foi publicado`);
   }
   const publicada = await api('PATCH', `/repos/${REPO}/releases/${release.id}`, JSON.stringify({ draft: false, make_latest: 'true', tag_name: tag, target_commitish: head }), { 'Content-Type': 'application/json' });
   console.log(`release: publicada ${publicada.html_url}`);
+
+  // 7. Conferência pública: o que os sites vão baixar, sem token.
+  try {
+    const publica = await (await fetch(`${API}/repos/${REPO}/releases/tags/${tag}`, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'rastro-release' } })).json();
+    const baixarPublico = async (nome) => {
+      const url = `https://github.com/${REPO}/releases/download/${tag}/${nome}`;
+      const a = (publica.assets || []).find((x) => x.name === nome);
+      if (!a || a.browser_download_url !== url) throw new Error(`${nome} fora do endereço público esperado`);
+      const r = await fetch(url, { redirect: 'manual', headers: { 'User-Agent': 'rastro-release' } });
+      const destino = r.headers.get('location') || '';
+      if (!DESTINO.test(destino)) throw new Error(`${nome} redireciona para host inesperado`);
+      const d = await fetch(destino, { redirect: 'error', headers: { 'User-Agent': 'rastro-release' } });
+      if (!d.ok) throw new Error(`${nome} respondeu ${d.status}`);
+      return Buffer.from(await d.arrayBuffer());
+    };
+    const zipPublico = await baixarPublico(nomeZip);
+    const hexPublico = createHash('sha256').update(zipPublico).digest('hex');
+    const shaPublico = (await baixarPublico(`${nomeZip}.sha256`)).toString('utf8');
+    const sigPublica = (await baixarPublico(`${nomeZip}.sig`)).toString('utf8').trim();
+    if (hexPublico !== hex || shaPublico !== conteudoHash.toString('utf8')) throw new Error('SHA-256 público diferente do local');
+    if (!verify(null, Buffer.from(mensagemAssinada(tag, nomeZip, hexPublico), 'utf8'), createPublicKey(chave), Buffer.from(sigPublica, 'hex'))) throw new Error('assinatura pública não confere');
+    console.log('release: conferida como os sites vão baixar (SHA-256 e assinatura)');
+  } catch (erro) {
+    falhar(`ATENÇÃO: a versão ${tag} foi publicada mas não passou na conferência pública (${erro.message}). Apague a versão ${tag} no GitHub agora e publique outra.`);
+  }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

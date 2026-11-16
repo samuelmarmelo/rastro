@@ -78,6 +78,15 @@ function set_site_transient( $k, $v, $t = 0 ) { // phpcs:ignore
 function wp_safe_remote_get( $url, $args = array() ) { // phpcs:ignore
 	return new WP_Error( 'http_request_failed' );
 }
+function get_file_data( $arquivo, $campos ) { // phpcs:ignore
+	$texto = (string) file_get_contents( $arquivo );
+	$saida = array();
+	foreach ( $campos as $chave => $nome ) {
+		$saida[ $chave ] = preg_match( '/^[ \t\/*#@]*' . preg_quote( $nome, '/' ) . ':(.*)$/mi', $texto, $m ) ? trim( $m[1] ) : '';
+	}
+	return $saida;
+}
+const T_CABECALHO = "<?php\n/**\n * Plugin Name: Rastro\n */\n";
 
 require __DIR__ . '/../../rastro/atualizacao/chaves.php';
 require __DIR__ . '/../../rastro/atualizacao/atualizador.php';
@@ -108,10 +117,19 @@ confere( 'atualizador sem ganchos na cópia embutida', has_filter( 'upgrader_pre
 admin();
 confere( 'estado: ausente', rastro_instalador_estado(), 'ausente' );
 mkdir( WP_PLUGIN_DIR . '/rastro' );
-file_put_contents( WP_PLUGIN_DIR . '/rastro/rastro.php', "<?php\n" );
+file_put_contents( WP_PLUGIN_DIR . '/rastro/rastro.php', "<?php\n/**\n * Plugin Name: Outro\n */\n" );
+confere( 'estado: pasta com outro plugin', rastro_instalador_estado(), 'conflito' );
+ob_start();
+rastro_instalador_aviso();
+$aviso = ob_get_clean();
+confere( 'conflito: aviso sem botão', array( false !== strpos( $aviso, 'outro plugin' ), false === strpos( $aviso, '<form' ) ), array( true, true ) );
+file_put_contents( WP_PLUGIN_DIR . '/rastro/rastro.php', T_CABECALHO );
 confere( 'estado: inativo', rastro_instalador_estado(), 'inativo' );
 $GLOBALS['t_ativos'] = array( 'rastro/rastro.php' );
 confere( 'estado: ativo', rastro_instalador_estado(), 'ativo' );
+ob_start();
+rastro_instalador_aviso();
+confere( 'ativo mas parado: aviso', false !== strpos( ob_get_clean(), 'ativo, mas parado' ), true );
 $GLOBALS['t_ativos'] = array();
 unlink( WP_PLUGIN_DIR . '/rastro/rastro.php' );
 rmdir( WP_PLUGIN_DIR . '/rastro' );
@@ -178,7 +196,7 @@ confere( 'ativar com plugin ausente: estado', rastro_instalador_processar( 'ativ
 confere( 'nada ativado até aqui', $GLOBALS['t_ativou'], array() );
 
 mkdir( WP_PLUGIN_DIR . '/rastro' );
-file_put_contents( WP_PLUGIN_DIR . '/rastro/rastro.php', "<?php\n" );
+file_put_contents( WP_PLUGIN_DIR . '/rastro/rastro.php', T_CABECALHO );
 confere( 'ativar instalado', rastro_instalador_processar( 'ativar' ), 'ativado' );
 confere( 'ativou o plugin próprio', $GLOBALS['t_ativou'], array( 'rastro/rastro.php' ) );
 $GLOBALS['t_ativar_erro'] = true;
