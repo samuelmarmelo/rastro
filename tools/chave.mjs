@@ -11,7 +11,8 @@
  * chave privada consegue publicar uma versão que os sites aceitam: guarde uma
  * cópia num cofre de senhas e não envie para ninguém.
  *
- * A chave pública (32 bytes em base64) vai para rastro/atualizacao/chaves.php.
+ * A chave pública (32 bytes em hex, 64 caracteres) vai para
+ * rastro/atualizacao/chaves.php.
  * Contrato: docs/RELEASE.md.
  */
 import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto';
@@ -32,12 +33,12 @@ export function caminhoDaChave() {
   return absoluto;
 }
 
-/** Chave pública crua (32 bytes) em base64, a partir de um KeyObject. */
-export function publicaEmBase64(chave) {
+/** Chave pública crua (32 bytes) em hex minúsculo, a partir de um KeyObject. */
+export function publicaEmHex(chave) {
   const der = createPublicKey(chave).export({ type: 'spki', format: 'der' });
   // SPKI do Ed25519: 12 bytes de cabeçalho + 32 bytes da chave.
   if (der.length !== 44) throw new Error('chave pública inesperada (não é Ed25519)');
-  return der.subarray(12).toString('base64');
+  return der.subarray(12).toString('hex');
 }
 
 export function lerChavePrivada() {
@@ -57,11 +58,11 @@ function principal() {
     mkdirSync(dirname(caminho), { recursive: true });
     writeFileSync(caminho, privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600, flag: 'wx' });
     console.log(`chave privada criada em ${caminho}`);
-    console.log(`chave pública: ${publicaEmBase64(privateKey)}`);
+    console.log(`chave pública: ${publicaEmHex(privateKey)}`);
     return;
   }
   if (comando === 'publica') {
-    console.log(publicaEmBase64(lerChavePrivada()));
+    console.log(publicaEmHex(lerChavePrivada()));
     return;
   }
   console.log('uso: node tools/chave.mjs gerar | publica');

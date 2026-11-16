@@ -13,7 +13,7 @@ arquivos, enviados com a versão ainda em rascunho:
 |---|---|
 | `rastro-vX.Y.Z.zip` | o plugin, pasta `rastro/` na raiz, montado com `git archive` do commit da tag |
 | `rastro-vX.Y.Z.zip.sha256` | uma linha: `<sha256 em hex minúsculo>  rastro-vX.Y.Z.zip` (formato do `sha256sum`) |
-| `rastro-vX.Y.Z.zip.sig` | uma linha: assinatura Ed25519 (64 bytes) em base64 da mensagem da seção 2 |
+| `rastro-vX.Y.Z.zip.sig` | uma linha: assinatura Ed25519 (64 bytes) em hex minúsculo (128 caracteres) da mensagem da seção 2 |
 
 O repositório tem releases imutáveis e tags `v*` protegidas: depois de
 publicada, nenhuma versão muda de arquivo nem de commit.
@@ -38,8 +38,8 @@ uma versão não serve para outra.
   sincronizada: `RASTRO_CHAVE_ASSINATURA` ou
   `~/.rastro/chave-assinatura-ed25519.pem` (`node tools/chave.mjs gerar`).
   Guarde uma cópia num cofre de senhas.
-- Chaves públicas confiáveis: `rastro_atualizador_chaves()` em
-  `rastro/atualizacao/chaves.php`. A release recusa assinar com chave que
+- Chaves públicas confiáveis (32 bytes em hex minúsculo):
+  `rastro_atualizador_chaves()` em `rastro/atualizacao/chaves.php`. A release recusa assinar com chave que
   não esteja lá.
 - Troca de chave: publicar uma versão assinada pela chave antiga que já
   traga a nova em `chaves.php`; na versão seguinte, assinar com a nova e

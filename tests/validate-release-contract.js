@@ -27,8 +27,18 @@ const tem = (t, s, m) => assert.ok(t.includes(s), m || s);
   );
 
   // 2. Lista de chaves lida só de dentro de rastro_atualizador_chaves().
-  const php = "<?php\n// 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' fora\nfunction rastro_atualizador_chaves() {\n\treturn array(\n\t\t'IIDSe7U+VbOaj9/1pt0JgMI6trbbX3BnmgnkyxuZe8c=',\n\t\t'curta=',\n\t);\n}\n";
-  assert.deepEqual(rel.chavesConfiaveis(php), ['IIDSe7U+VbOaj9/1pt0JgMI6trbbX3BnmgnkyxuZe8c=']);
+  const K = 'ab'.repeat(32);
+  const php = `<?php
+// '${'cd'.repeat(32)}' fora
+function rastro_atualizador_chaves() {
+	return array(
+		'${K}',
+		'abc',
+		'${'EF'.repeat(32)}',
+	);
+}
+`;
+  assert.deepEqual(rel.chavesConfiaveis(php), [K], 'só hex minúsculo de 64, só dentro da função');
   assert.deepEqual(rel.chavesConfiaveis('<?php'), []);
 
   // 3. Nada de desenvolvimento no zip.
@@ -41,12 +51,12 @@ const tem = (t, s, m) => assert.ok(t.includes(s), m || s);
 
   // 4. Assinatura Ed25519 de ida e volta com a chave pública crua de 32 bytes.
   const { privateKey } = crypto.generateKeyPairSync('ed25519');
-  const publica = chave.publicaEmBase64(privateKey);
-  assert.match(publica, /^[A-Za-z0-9+/]{43}=$/);
+  const publica = chave.publicaEmHex(privateKey);
+  assert.match(publica, /^[0-9a-f]{64}$/);
   const msg = Buffer.from(rel.mensagemAssinada('v9.9.9', 'rastro-v9.9.9.zip', '0'.repeat(64)));
   const sig = crypto.sign(null, msg, privateKey);
   assert.equal(sig.length, 64);
-  const spki = Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), Buffer.from(publica, 'base64')]);
+  const spki = Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), Buffer.from(publica, 'hex')]);
   const pub = crypto.createPublicKey({ key: spki, format: 'der', type: 'spki' });
   assert.ok(crypto.verify(null, msg, pub, sig), 'assinatura confere com a chave pública crua');
   assert.ok(!crypto.verify(null, Buffer.from(rel.mensagemAssinada('v9.9.8', 'rastro-v9.9.9.zip', '0'.repeat(64))), pub, sig), 'outra tag não confere');

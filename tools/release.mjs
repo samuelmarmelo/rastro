@@ -17,7 +17,7 @@
  *     raiz), confere a lista de arquivos (só a pasta do plugin, nada de dev)
  *     e o tamanho (até 5 MB).
  *  5. Escreve rastro-vX.Y.Z.zip.sha256 (`<hex>  rastro-vX.Y.Z.zip`) e
- *     rastro-vX.Y.Z.zip.sig (assinatura Ed25519 em base64 da mensagem da
+ *     rastro-vX.Y.Z.zip.sig (assinatura Ed25519 em hex da mensagem da
  *     seção 2 de docs/RELEASE.md). A chave pública da chave usada precisa
  *     estar em rastro/atualizacao/chaves.php, senão os sites recusariam.
  *  6. Cria a versão em rascunho, envia os três arquivos, confere nome,
@@ -36,7 +36,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { lerChavePrivada, publicaEmBase64 } from './chave.mjs';
+import { lerChavePrivada, publicaEmHex } from './chave.mjs';
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = 'samuelmarmelo/rastro';
@@ -56,7 +56,7 @@ export function mensagemAssinada(tag, arquivo, hex) {
 export function chavesConfiaveis(php) {
   const corpo = /function rastro_atualizador_chaves\(\)[^{]*\{([\s\S]*?)\n\}/.exec(php);
   if (!corpo) return [];
-  return [...corpo[1].matchAll(/'([A-Za-z0-9+/]{43}=)'/g)].map((m) => m[1]);
+  return [...corpo[1].matchAll(/'([0-9a-f]{64})'/g)].map((m) => m[1]);
 }
 
 /** Arquivo do repositório que não pode ir no zip (caminho a partir de rastro/). */
@@ -137,14 +137,14 @@ async function principal() {
   const hex = createHash('sha256').update(zip).digest('hex');
   const conteudoHash = Buffer.from(`${hex}  ${nomeZip}\n`, 'utf8');
   const chave = lerChavePrivada();
-  const publica = publicaEmBase64(chave);
+  const publica = publicaEmHex(chave);
   if (!chavesConfiaveis(ler('rastro/atualizacao/chaves.php')).includes(publica)) {
     falhar('a chave pública desta chave privada não está em rastro/atualizacao/chaves.php; os sites recusariam a versão');
   }
   const mensagem = Buffer.from(mensagemAssinada(tag, nomeZip, hex), 'utf8');
   const assinatura = sign(null, mensagem, chave);
   if (!verify(null, mensagem, createPublicKey(chave), assinatura)) falhar('a assinatura não confere com a própria chave');
-  const conteudoSig = Buffer.from(`${assinatura.toString('base64')}\n`, 'utf8');
+  const conteudoSig = Buffer.from(`${assinatura.toString('hex')}\n`, 'utf8');
   writeFileSync(join(pasta, `${nomeZip}.sha256`), conteudoHash);
   writeFileSync(join(pasta, `${nomeZip}.sig`), conteudoSig);
   console.log(`release: ${nomeZip} ${zip.length} bytes, ${arquivos.length} arquivos`);
