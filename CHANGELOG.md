@@ -22,6 +22,10 @@ Versões: [SemVer](https://semver.org/lang/pt-BR/).
   (`tiktok_cabecalho`), `ttq.revokeConsent()` na revogação, `content_ids`
   nos eventos e arquivo de verificação `.txt` na raiz do site (assinatura
   do TikTok for Developers e outros serviços).
+- Pacote para o diretório do WordPress.org (`tools/wporg.mjs`): mesmo
+  código, sem o atualizador próprio e sem `Update URI`; `readme.txt` no
+  formato do diretório com a seção de serviços externos
+  (`docs/WORDPRESS-ORG.md`).
 
 ## [1.0.0] - 2026-11-16
 
