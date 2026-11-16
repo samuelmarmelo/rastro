@@ -142,9 +142,22 @@ confere(
 			'defaults'          => '2026-08-30',
 			'person_profiles'   => 'identified_only',
 			'session_recording' => array( 'maskAllInputs' => true ),
+			'logs'              => array(
+				'serviceName'        => 'rastro',
+				'environment'        => 'production',
+				'serviceVersion'     => '1.0.0',
+				'captureConsoleLogs' => false,
+			),
 		),
 	)
 );
+
+com_config( config_cheia( array( 'posthog_logs' => '0' ) ) );
+$destinos = rastro_destinos();
+confere( 'PostHog sem logs com o campo desligado', isset( $destinos['posthog']['navegador']['config']['logs'] ), false );
+com_config( config_cheia( array( 'posthog_logs_console' => '1' ) ) );
+$destinos = rastro_destinos();
+confere( 'PostHog com o console pela opção', $destinos['posthog']['navegador']['config']['logs']['captureConsoleLogs'], true );
 
 com_config( config_cheia( array( 'posthog_regiao' => 'eu', 'openai_debug' => '1', 'ads_rotulo_compra' => 'ruim!' ) ) );
 $destinos = rastro_destinos();

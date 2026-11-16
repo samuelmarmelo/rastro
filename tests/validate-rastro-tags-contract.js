@@ -779,4 +779,58 @@ if (temPhp.status === 0) {
   assert.equal(a.w.rastroFilaEventos.length, 0, 'push depois do carregamento não acumula');
 }
 
+// Logs do PostHog (docs/LOGS.md): chave `logs` validada no posthog.init,
+// window.rastro.log em fila até o PostHog carregar, nada sem aceite, nada
+// com os logs desligados, falha de carregador vira log.
+{
+  const LOGS = { serviceName: 'rastro', environment: 'production', serviceVersion: '1.0.0', captureConsoleLogs: false };
+  const comLogs = (logs) => destinosCheios({
+    posthog: {
+      carrega_com: ['analise'],
+      id: IDS.posthog,
+      config: { api_host: 'https://us.i.posthog.com', defaults: '2026-08-30', person_profiles: 'identified_only', logs },
+    },
+  });
+
+  const a = ambiente({ destinos: comLogs(LOGS) });
+  assert.equal(typeof a.w.rastro.log, 'function', 'window.rastro.log');
+  assert.equal(a.w.rastro.log('warn', 'antes do aceite', { modulo: 'teste', url: 'https://x.exemplo/?email=a' }), true, 'log na fila antes do aceite');
+  assert.equal(a.w.posthog, undefined, 'log não carrega o PostHog');
+  a.consent(SO_ANALISE);
+  const init = a.w.posthog._i[0][1];
+  assert.deepEqual(j(init.logs), LOGS, 'posthog.init com logs');
+  const capturados = a.posthog().filter((x) => x[0] === 'captureLog').map((x) => x[1]);
+  assert.deepEqual(capturados, [{ body: 'antes do aceite', level: 'warn', attributes: { modulo: 'teste', url: 'https://x.exemplo/' } }], 'fila entregue pelo captureLog, sem consulta');
+  a.w.rastro.log('nivel-estranho', 'depois', { lista: [1], ok: true });
+  const ultimo = a.posthog().filter((x) => x[0] === 'captureLog').pop()[1];
+  assert.deepEqual(ultimo, { body: 'depois', level: 'info', attributes: { ok: true } }, 'nível desconhecido vira info; só valores simples');
+  a.w.rastro.log('error', 'falhou para ana@exemplo.com, cpf 123.456.789-09, pedido 4521, /view-order/4521/', { quem: 'ana%40exemplo.com' });
+  const mascarado = a.posthog().filter((x) => x[0] === 'captureLog').pop()[1];
+  assert.equal(mascarado.body, 'falhou para [e-mail], cpf [cpf], pedido [número], /view-order/:id/', 'log do navegador mascarado');
+  assert.equal(mascarado.attributes.quem, '[e-mail]', 'atributo mascarado');
+
+  const b = ambiente({ destinos: comLogs(LOGS) });
+  b.w.rastro.log('error', 'some sem aceite');
+  b.consent(NADA);
+  assert.equal(b.w.rastro.log('error', 'depois da recusa'), false, 'recusa: log não entra');
+  assert.equal(b.w.posthog, undefined, 'recusa: nada do PostHog');
+
+  const c = ambiente({ destinos: comLogs({ serviceName: 'Rastro <script>', captureConsoleLogs: 'sim' }) });
+  assert.equal(c.w.rastro.log('info', 'x'), false, 'logs inválidos: desligados');
+  c.consent(SO_ANALISE);
+  assert.equal(c.w.posthog._i[0][1].logs, undefined, 'logs inválidos não vão ao init');
+
+  const d = ambiente({ destinos: destinosCheios() });
+  assert.equal(d.w.rastro.log('info', 'x'), false, 'sem logs na configuração: nada');
+
+  // Falha de um carregador (criar <script> quebra) vira log de erro.
+  let quebrar = false;
+  const e = ambiente({ destinos: comLogs(LOGS), criarFalha: (tag) => quebrar && tag === 'script' });
+  e.consent(SO_ANALISE);
+  quebrar = true;
+  e.consent(TUDO);
+  const erros = e.posthog().filter((x) => x[0] === 'captureLog').map((x) => x[1]).filter((x) => x.level === 'error');
+  assert.ok(erros.length > 0 && /^Falha ao carregar o destino /.test(erros[0].body), 'falha de carregador vira log de erro');
+}
+
 console.log('Rastro tags contract: PASS');

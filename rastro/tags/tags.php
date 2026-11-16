@@ -150,6 +150,13 @@ function rastro_tags_navegador_destino( string $destino, string $id, array $conf
 				$opcoes['disable_session_recording'] = true;
 				$opcoes['autocapture']               = false;
 			}
+			// Logs do PostHog (módulo logs/logs.php; ausente, nada muda).
+			if ( function_exists( 'rastro_logs_navegador' ) ) {
+				$logs = rastro_logs_navegador( $config, function_exists( 'wp_get_environment_type' ) ? (string) wp_get_environment_type() : '', defined( 'RASTRO_VERSAO' ) ? (string) RASTRO_VERSAO : '' );
+				if ( array() !== $logs ) {
+					$opcoes['logs'] = $logs;
+				}
+			}
 			return array(
 				'id'     => $id,
 				'config' => $opcoes,

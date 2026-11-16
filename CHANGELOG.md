@@ -5,6 +5,12 @@ Versões: [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+- Logs no PostHog Logs: falhas do Rastro no servidor (OTLP, sem dado
+  pessoal) e no navegador (`posthog.captureLog`, depois do aceite), API
+  `window.rastro.log()` e `rastro_log()`, console do navegador opcional
+  (`docs/LOGS.md`).
+
 ## [1.0.0] - 2026-11-16
 
 Primeira versão pública, distribuída pelo repositório público e atualizada

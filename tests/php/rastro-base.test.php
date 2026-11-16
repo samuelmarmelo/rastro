@@ -117,6 +117,7 @@ confere(
 		'nucleo/config.php',
 		'nucleo/regras.php',
 		'nucleo/saida.php',
+		'logs/logs.php',
 		'consentimento/consentimento.php',
 		'consentimento/aviso.php',
 		'tags/tags.php',
@@ -134,7 +135,7 @@ confere(
 novo();
 confere( 'fora do painel, sem admin/admin.php', in_array( 'admin/admin.php', rastro_modulos(), true ), false );
 add_filter( 'rastro_modulos', static function () { return 'quebrado'; } );
-confere( 'filtro rastro_modulos que não devolve lista: lista padrão', count( rastro_modulos() ), 13 );
+confere( 'filtro rastro_modulos que não devolve lista: lista padrão', count( rastro_modulos() ), 14 );
 remove_all_filters( 'rastro_modulos' );
 add_filter( 'rastro_modulos', static function ( $m ) { $m[] = 'extra/novo.php'; $m[] = 7; return $m; } );
 confere( 'filtro rastro_modulos acrescenta (só textos)', array_slice( rastro_modulos(), -1 ), array( 'extra/novo.php' ) );
@@ -177,7 +178,7 @@ confere( 'RASTRO_LOCAL liga a medição numa cópia local', $c['local'] ?? null,
 novo();
 $esquema = rastro_config_esquema();
 $eventos = array( 'view_item_list', 'view_item', 'add_to_cart', 'remove_from_cart', 'view_cart', 'begin_checkout', 'add_payment_info', 'purchase', 'search' );
-$chaves  = array( 'gtm', 'ga4', 'ads', 'ads_rotulo_compra', 'meta', 'tiktok', 'openai', 'openai_debug', 'posthog', 'posthog_regiao', 'google_verificacao', 'carregamento', 'eventos_loja' );
+$chaves  = array( 'gtm', 'ga4', 'ads', 'ads_rotulo_compra', 'meta', 'tiktok', 'openai', 'openai_debug', 'posthog', 'posthog_regiao', 'posthog_logs', 'posthog_logs_console', 'google_verificacao', 'carregamento', 'eventos_loja' );
 foreach ( $eventos as $evento ) {
 	$chaves[] = 'evento_' . $evento;
 }
@@ -863,7 +864,7 @@ confere( 'tela: formulário para o admin-post', false !== strpos( $tela, '<form 
 confere( 'tela: ação rastro_salvar', false !== strpos( $tela, 'name="action" value="rastro_salvar"' ), true );
 confere( 'tela: aba no formulário', false !== strpos( $tela, 'name="aba" value="geral"' ), true );
 confere( 'tela: nonce', false !== strpos( $tela, 'name="_wpnonce" value="' . wp_create_nonce( 'rastro_salvar' ) . '"' ), true );
-confere( 'tela: campos da aba Geral', preg_match_all( '/name="rastro\[([a-z0-9_]+)\]/', $tela, $nomes ) > 0 ? array_values( array_unique( $nomes[1] ) ) : array(), array( 'gtm', 'ga4', 'ads', 'ads_rotulo_compra', 'meta', 'tiktok', 'openai', 'openai_debug', 'posthog', 'posthog_regiao', 'google_verificacao', 'carregamento' ) );
+confere( 'tela: campos da aba Geral', preg_match_all( '/name="rastro\[([a-z0-9_]+)\]/', $tela, $nomes ) > 0 ? array_values( array_unique( $nomes[1] ) ) : array(), array( 'gtm', 'ga4', 'ads', 'ads_rotulo_compra', 'meta', 'tiktok', 'openai', 'openai_debug', 'posthog', 'posthog_regiao', 'posthog_logs', 'posthog_logs_console', 'google_verificacao', 'carregamento' ) );
 confere( 'tela: IDs sem preenchimento automático', substr_count( $tela, 'autocomplete="off" spellcheck="false"' ), 9 );
 confere( 'tela: valor guardado no campo', false !== strpos( $tela, 'name="rastro[ga4]" value="G-ABC1234"' ), true );
 confere( 'tela: seleção marcada', false !== strpos( $tela, '<option value="ocioso" selected=\'selected\'>' ), true );
