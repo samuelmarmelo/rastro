@@ -241,6 +241,16 @@
 		},
 		// Trecho oficial do Meta Pixel (fila fbq).
 		meta: function ( c ) {
+			// Código base já no <head> (meta_cabecalho): a fila fbq já tem o
+			// init e o PageView. Na `fila`, falta só o fbevents.js; no
+			// `completo` (modo básico), o <head> já carregou tudo.
+			if ( 'function' === typeof w.fbq && ( 'fila' === c.cabecalho || 'completo' === c.cabecalho ) ) {
+				if ( 'fila' === c.cabecalho ) {
+					preconectar( HOSTS.meta );
+					inserirScript( 'meta', HOSTS.meta + '/en_US/fbevents.js' );
+				}
+				return;
+			}
 			if ( ! w.fbq ) {
 				var n = w.fbq = function () {
 					if ( n.callMethod ) {

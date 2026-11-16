@@ -102,7 +102,7 @@ tem(js, "'preconnect'");
 tem(js, "'basico' === cfg.consent.modo", 'modo básico (seção 2.1)');
 
 // Hosts: só os oficiais da seção 5.
-const HOSTS_PERMITIDOS = ['www.googletagmanager.com', 'connect.facebook.net', 'analytics.tiktok.com', 'bzrcdn.openai.com', 'us.i.posthog.com', 'eu.i.posthog.com'];
+const HOSTS_PERMITIDOS = ['www.googletagmanager.com', 'connect.facebook.net', 'www.facebook.com', 'analytics.tiktok.com', 'bzrcdn.openai.com', 'us.i.posthog.com', 'eu.i.posthog.com'];
 for (const arquivo of [R + 'tags/tags.php', R + 'assets/js/tags.js']) {
   for (const url of ler(arquivo).match(/https?:\/\/[A-Za-z0-9.-]+/g) || []) {
     const host = url.replace(/^https?:\/\//, '');
@@ -827,6 +827,34 @@ if (temPhp.status === 0) {
   e.consent(TUDO);
   const erros = e.posthog().filter((x) => x[0] === 'captureLog').map((x) => x[1]).filter((x) => x.level === 'error');
   assert.ok(erros.length > 0 && /^Falha ao carregar o destino /.test(erros[0].body), 'falha de carregador vira log de erro');
+}
+
+// Meta Pixel com o código base no <head> (seção 5.1): na fila, o tags.js só
+// insere o fbevents.js depois do aceite e não repete init nem PageView; no
+// completo (modo básico), não insere nada de novo.
+{
+  const filaHead = (w) => {
+    const n = w.fbq = function () { n.queue.push(arguments); };
+    n.push = n; n.loaded = true; n.version = '2.0'; n.queue = [];
+    w.fbq('set', 'autoConfig', false, IDS.meta); w.fbq('init', IDS.meta); w.fbq('track', 'PageView');
+  };
+  const a = ambiente({ destinos: destinosCheios({ meta: { carrega_com: ['publicidade'], id: IDS.meta, cabecalho: 'fila' } }), antes: filaHead });
+  assert.equal(a.scripts().filter((s) => /fbevents\.js$/.test(s.src)).length, 0, 'fila: nada da Meta antes do aceite');
+  a.consent(TUDO);
+  assert.equal(a.scripts().filter((s) => s.src === 'https://connect.facebook.net/en_US/fbevents.js').length, 1, 'fila: fbevents.js depois do aceite');
+  assert.deepEqual(a.fbq().filter((x) => x[0] === 'init').length, 1, 'fila: init uma vez só');
+  assert.deepEqual(a.fbq().filter((x) => x[0] === 'track' && x[1] === 'PageView').length, 1, 'fila: PageView uma vez só');
+  a.w.rastro.event('add_to_cart', { currency: 'BRL', value: 10, items: [{ item_id: '11', quantity: 1 }] });
+  assert.ok(a.fbq().some((x) => x[0] === 'track' && x[1] === 'AddToCart'), 'fila: eventos seguem para a Meta');
+
+  const b = ambiente({ destinos: destinosCheios({ meta: { carrega_com: ['publicidade'], id: IDS.meta, cabecalho: 'completo' } }), antes: filaHead, consentCfg: { modo: 'basico' } });
+  assert.equal(b.scripts().filter((s) => /fbevents\.js$/.test(s.src)).length, 0, 'completo: o tags.js não insere o fbevents.js de novo');
+  assert.equal(b.w.rastro.tags.carregado('meta'), true, 'completo: Meta marcada como carregada');
+  assert.deepEqual(b.fbq().filter((x) => x[0] === 'init').length, 1, 'completo: init uma vez só');
+
+  const c = ambiente({ destinos: destinosCheios({ meta: { carrega_com: ['publicidade'], id: IDS.meta, cabecalho: 'fila' } }) });
+  c.consent(TUDO);
+  assert.deepEqual(c.fbq().filter((x) => x[0] === 'init').length, 1, 'sem a fila no head (removida por otimizador): carrega do jeito antigo');
 }
 
 console.log('Rastro tags contract: PASS');

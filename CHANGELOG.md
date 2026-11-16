@@ -10,6 +10,10 @@ Versões: [SemVer](https://semver.org/lang/pt-BR/).
   pessoal) e no navegador (`posthog.captureLog`, depois do aceite), API
   `window.rastro.log()` e `rastro_log()`, console do navegador opcional
   (`docs/LOGS.md`).
+- Meta Pixel no cabeçalho, como a Meta pede (`meta_cabecalho`, padrão
+  ligado): fila `fbq` no `<head>` sem pedido à Meta antes do aceite; no
+  modo básico, o código base completo no `<head>` e o `<noscript>` no
+  rodapé.
 
 ## [1.0.0] - 2026-11-16
 

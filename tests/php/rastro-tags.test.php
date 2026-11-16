@@ -129,7 +129,7 @@ $montados = rastro_destinos_montar(
 confere( 'GA4 em página privada: nunca a consulta de campanha', $montados['ga4']['navegador']['page_location'], 'https://loja.exemplo.com.br/finalizar-compra/' );
 confere( 'GTM só com o ID', $destinos['gtm']['navegador'], array( 'id' => 'GTM-ABC1234' ) );
 confere( 'Ads com o rótulo da compra', $destinos['ads']['navegador'], array( 'id' => 'AW-123456789', 'rotulo_compra' => 'AbC-123_xy' ) );
-confere( 'Meta só com o ID', $destinos['meta']['navegador'], array( 'id' => '123456789012345' ) );
+confere( 'Meta com o código base na fila do cabeçalho', $destinos['meta']['navegador'], array( 'id' => '123456789012345', 'cabecalho' => 'fila' ) );
 confere( 'TikTok só com o ID', $destinos['tiktok']['navegador'], array( 'id' => 'ABCDEFGHIJ12345678' ) );
 confere( 'OpenAI sem depuração', $destinos['openai']['navegador'], array( 'id' => 'oai_pixel_123', 'debug' => false ) );
 confere(
@@ -300,8 +300,58 @@ confere( 'HTML igual com e sem cookie (cache de página seguro)', $heads['sem co
 confere( 'IDs só dentro do JSON da configuração', substr_count( $heads['sem cookie'], 'GTM-ABC1234' ), 1 );
 
 $fonte = file_get_contents( $rastro_dir . '/tags/tags.php' );
-confere( 'tags.php não imprime script', preg_match( '#[\'"]<script|wp_print_inline_script_tag|rastro_script_inline\(|wp_add_inline_script\(#', $fonte ), 0 );
-confere( 'tags.php sem endereço de carregador', preg_match( $terceiros, $fonte ), 0 );
+// Exceção única: o código base do Meta Pixel (seção 5.1), numa função própria.
+$sem_meta = (string) preg_replace( '#\nfunction rastro_tags_meta_cabecalho_js\(.*?\n}\n#s', "\n", $fonte );
+$sem_meta = (string) preg_replace( '#\nfunction rastro_tags_meta_cabecalho\(\).*?\n}\n#s', "\n", $sem_meta );
+$sem_meta = (string) preg_replace( '#/\*.*?\*/#s', '', $sem_meta );
+confere( 'tags.php não imprime script (fora do Meta Pixel)', preg_match( '#[\'"]<script|wp_print_inline_script_tag|rastro_script_inline\(|wp_add_inline_script\(#', $sem_meta ), 0 );
+confere( 'tags.php sem endereço de carregador (fora do Meta Pixel)', preg_match( $terceiros, $sem_meta ), 0 );
+
+/* 4b. Meta Pixel no cabeçalho e no rodapé (seção 5.1) ------------------------------- */
+
+$cabecalho_meta = static function ( array $config, array $sobre = array() ) {
+	com_config( $config, array_replace( array( 'uri' => '/produto/racao/', 'woo' => array( 'is_product' => true ) ), $sobre ) );
+	do_action( 'wp_enqueue_scripts' );
+	return array(
+		'head'   => rastro_teste_saida( 'do_action', array( 'wp_head' ) ),
+		'rodape' => rastro_teste_saida( 'do_action', array( 'wp_footer' ) ),
+	);
+};
+confere( 'Meta: código base no wp_head, prioridade 3', has_action( 'wp_head', 'rastro_tags_meta_cabecalho' ), 3 );
+confere( 'Meta: noscript no wp_footer', has_action( 'wp_footer', 'rastro_tags_meta_rodape' ), 20 );
+
+$s = $cabecalho_meta( config_cheia() );
+confere( 'LGPD: fila fbq no head', false !== strpos( $s['head'], 'id="rastro-meta-pixel"' ) && false !== strpos( $s['head'], "fbq('init',\"123456789012345\")" ), true );
+confere( 'LGPD: autoConfig desligado antes do init', strpos( $s['head'], "fbq('set','autoConfig',false" ) < strpos( $s['head'], "fbq('init'" ), true );
+confere( 'LGPD: PageView na fila', false !== strpos( $s['head'], "fbq('track','PageView')" ), true );
+confere( 'LGPD: nenhum carregador de terceiro', preg_match( $terceiros, $s['head'] . $s['rodape'] ), 0 );
+confere( 'LGPD: sem noscript', false !== strpos( $s['rodape'], '<noscript' ), false );
+confere( 'LGPD: fila depois da configuração', strpos( $s['head'], 'id="rastro-config"' ) < strpos( $s['head'], 'id="rastro-meta-pixel"' ), true );
+
+$s = $cabecalho_meta( config_cheia( array( 'modo' => 'basico' ) ) );
+confere( 'básico: código oficial completo no head', false !== strpos( $s['head'], "'https://connect.facebook.net/en_US/fbevents.js'" ), true );
+confere( 'básico: noscript no rodapé', str_replace( '&#038;', '&amp;', $s['rodape'] ), '<noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=123456789012345&amp;ev=PageView&amp;noscript=1" /></noscript>' . "\n" );
+
+$s = $cabecalho_meta( config_cheia( array( 'modo' => 'basico' ) ), array( 'uri' => '/finalizar-compra/pedido-recebido/123/?key=wc_order_abc', 'get' => array( 'key' => 'wc_order_abc' ), 'woo' => array( 'is_order_received_page' => true, 'is_checkout' => true ) ) );
+confere( 'básico em página privada: só a fila', preg_match( $terceiros, $s['head'] . $s['rodape'] ), 0 );
+confere( 'básico em página privada: fila presente', false !== strpos( $s['head'], 'id="rastro-meta-pixel"' ), true );
+
+$s = $cabecalho_meta( config_cheia( array( 'meta_cabecalho' => '0', 'modo' => 'basico' ) ) );
+confere( 'campo desligado: nada do Meta no head', false !== strpos( $s['head'], 'rastro-meta-pixel' ), false );
+confere( 'campo desligado: nada no rodapé', $s['rodape'], '' );
+
+add_filter( 'rastro_destinos', static function ( $d ) { $d['meta']['ativo'] = false; return $d; } );
+$s = $cabecalho_meta( config_cheia( array( 'modo' => 'basico' ) ) );
+confere( 'Meta desligado pela ponte: nada no head', false !== strpos( $s['head'], 'rastro-meta-pixel' ), false );
+remove_all_filters( 'rastro_destinos' );
+
+$s = $cabecalho_meta( config_cheia(), array( 'logado' => true, 'capacidades' => array( 'edit_posts' => true ) ) );
+confere( 'equipe: nada do Meta', false !== strpos( $s['head'], 'rastro-meta-pixel' ), false );
+
+confere( 'regra: ID inválido não gera código', rastro_tags_meta_cabecalho_js( '12</script>', 'fila' ), '' );
+confere( 'regra: tipo inválido não gera código', rastro_tags_meta_cabecalho_js( '123456789012345', 'outro' ), '' );
+confere( 'regra: noscript só no completo', rastro_tags_meta_noscript_html( '123456789012345', 'fila' ), '' );
+confere( 'regra: tipo pela configuração', array( rastro_tags_meta_tipo( array(), false ), rastro_tags_meta_tipo( array( 'meta_cabecalho' => '1' ), false ), rastro_tags_meta_tipo( array( 'meta_cabecalho' => '1', 'modo' => 'basico' ), false ), rastro_tags_meta_tipo( array( 'meta_cabecalho' => '1', 'modo' => 'basico' ), true ) ), array( '', 'fila', 'completo', 'fila' ) );
 
 /* 5. Verificação do Google --------------------------------------------------------------- */
 
