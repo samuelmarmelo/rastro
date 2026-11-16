@@ -56,7 +56,8 @@ não gravam nada no navegador e não levam dado pessoal (falhas do site).
   { body, level, attributes } )`. Antes do PostHog carregar, até 20 logs
   esperam numa fila na memória; sem aceite de análise (recusa) a fila é
   descartada e nada sai. Atributos só com valores simples; endereços perdem
-  a consulta e a âncora.
+  a consulta e a âncora. Texto e atributos passam pelas mesmas máscaras do
+  servidor (e-mail, CPF, telefone, número de pedido, números longos).
 - Falha de um carregador de destino no `tags.js` vira log `error`
   ("Falha ao carregar o destino <chave>").
 - Segue o PostHog do Rastro: só depois do aceite de análise (modo LGPD).
