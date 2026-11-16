@@ -4,7 +4,7 @@ Tags: lgpd, cookie consent, woocommerce, utm, analytics
 Requires at least: 6.3
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -86,6 +86,12 @@ Rastro connects to the services below only when you paste the matching ID or key
 Domain verification tags (Google, Meta, Pinterest) and the verification file only print the value you paste; they do not connect anywhere.
 
 == Changelog ==
+
+= 1.1.0 =
+* Rastro logs in PostHog Logs (server without personal data, browser after consent).
+* Meta Pixel base code in the head as Meta asks (only the queue before consent; full code and noscript in basic mode).
+* Verifications tab: Google, Meta (Facebook) and Pinterest meta tags and a .txt verification file.
+* TikTok: base code in the head in basic mode, consent revocation and content_ids in events.
 
 = 1.0.0 =
 * First public version: consent (LGPD, auto-accept and basic), Consent Mode v2, GTM, GA4, Google Ads, Meta, TikTok, OpenAI Ads and PostHog after consent, WooCommerce events, order attribution and sales reports by source.

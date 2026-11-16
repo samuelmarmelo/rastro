@@ -123,7 +123,7 @@ conferido. Detalhes em `docs/ATUALIZADOR.md`.
 node tests/run.js
 ```
 
-Os testes PHP rodam quando há `php` no PATH. O CI roda em PHP 7.4 e 8.4.
+Os testes PHP rodam quando há `php` no PATH. O CI roda em PHP 7.4, 8.4 e 8.5.
 
 ## Publicar uma versão
 

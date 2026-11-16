@@ -5,6 +5,8 @@ Versões: [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+## [1.1.0] - 2026-11-16
+
 ### Adicionado
 - Logs no PostHog Logs: falhas do Rastro no servidor (OTLP, sem dado
   pessoal) e no navegador (`posthog.captureLog`, depois do aceite), API
@@ -26,6 +28,9 @@ Versões: [SemVer](https://semver.org/lang/pt-BR/).
   código, sem o atualizador próprio e sem `Update URI`; `readme.txt` no
   formato do diretório com a seção de serviços externos
   (`docs/WORDPRESS-ORG.md`).
+
+### Mudado
+- CI também em PHP 8.5.
 
 ## [1.0.0] - 2026-11-16
 
