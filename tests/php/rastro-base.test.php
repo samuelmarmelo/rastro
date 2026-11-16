@@ -124,13 +124,15 @@ confere(
 		'atribuicao/pedido.php',
 		'relatorios/dados.php',
 		'relatorios/relatorios.php',
+		'atualizacao/chaves.php',
+		'atualizacao/atualizador.php',
 		'admin/admin.php',
 	)
 );
 novo();
 confere( 'fora do painel, sem admin/admin.php', in_array( 'admin/admin.php', rastro_modulos(), true ), false );
 add_filter( 'rastro_modulos', static function () { return 'quebrado'; } );
-confere( 'filtro rastro_modulos que não devolve lista: lista padrão', count( rastro_modulos() ), 11 );
+confere( 'filtro rastro_modulos que não devolve lista: lista padrão', count( rastro_modulos() ), 13 );
 remove_all_filters( 'rastro_modulos' );
 add_filter( 'rastro_modulos', static function ( $m ) { $m[] = 'extra/novo.php'; $m[] = 7; return $m; } );
 confere( 'filtro rastro_modulos acrescenta (só textos)', array_slice( rastro_modulos(), -1 ), array( 'extra/novo.php' ) );

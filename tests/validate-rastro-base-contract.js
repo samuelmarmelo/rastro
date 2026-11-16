@@ -85,7 +85,11 @@ for (const arquivo of doRastro) {
 for (const arquivo of [...doRastro, ...docsRastro, ...testesRastro]) {
   const texto = ler(arquivo);
   semMatch(texto, TRAVESSAO, `${arquivo} sem travessão`);
-  semMatch(texto, PLATAFORMA, `${arquivo} sem o nome da plataforma de código`);
+  // O atualizador (atualizacao/) e o cabeçalho `Update URI` precisam dos
+  // endereços do servidor de atualizações; os textos da tela nunca citam a
+  // plataforma (contrato tests/validate-atualizador-contract.js).
+  if (arquivo.startsWith(R + 'atualizacao/')) continue;
+  semMatch(texto.replace(/^ \* Update URI:.*$/m, ''), PLATAFORMA, `${arquivo} sem o nome da plataforma de código`);
 }
 for (const arquivo of phpDoRastro) {
   const texto = ler(arquivo);
@@ -134,6 +138,7 @@ assert.deepEqual(modulos, [
   'tags/tags.php', 'loja/eventos.php',
   'atribuicao/atribuicao.php', 'atribuicao/pedido.php',
   'relatorios/dados.php', 'relatorios/relatorios.php',
+  'atualizacao/chaves.php', 'atualizacao/atualizador.php',
   'admin/admin.php',
 ], 'lista completa de módulos, na ordem do contrato');
 comMatch(lista, /if \( is_admin\(\) \) \{\n\t+\$modulos\[\] = 'admin\/admin\.php';/, 'painel só no painel');
@@ -292,9 +297,10 @@ semMatch(admin, /<script|wp_enqueue_script/, 'painel sem JS');
 const css = ler(R + 'assets/css/admin.css');
 semMatch(css, /@import|url\(/, 'admin.css sem recurso externo');
 
-// 7. Só os arquivos desta frente: nenhum endereço externo além da licença.
+// 7. Só os arquivos desta frente: nenhum endereço externo além da licença e
+// da página do projeto no cabeçalho `Update URI` (o atualizador usa o host).
 for (const arquivo of [R + 'rastro.php', R + 'nucleo/config.php', R + 'nucleo/regras.php', R + 'nucleo/saida.php', R + 'admin/admin.php', R + 'assets/css/admin.css']) {
-  const externos = (ler(arquivo).match(/https?:\/\/[^\s'")]+/g) || []).filter((u) => u !== 'https://www.gnu.org/licenses/gpl-2.0.html');
+  const externos = (ler(arquivo).match(/https?:\/\/[^\s'")]+/g) || []).filter((u) => u !== 'https://www.gnu.org/licenses/gpl-2.0.html' && !(arquivo === R + 'rastro.php' && u === 'https://' + 'git' + 'hub.com/samuelmarmelo/rastro'));
   assert.deepEqual(externos, [], `${arquivo} sem endereço externo`);
 }
 
