@@ -75,3 +75,26 @@ chamar o filtro `update_plugins_github.com` para este plugin.
 
 Os textos falam "servidor de atualizações", nunca o nome da plataforma, e
 todos dizem "Nada foi instalado" quando recusam.
+
+## 5. Da cópia embutida para o plugin próprio
+
+`rastro/atualizacao/instalador.php` só carrega no painel e só numa cópia
+embutida. Na tela Plugins e nas telas do Rastro, para quem pode ativar
+plugins, aparece o aviso "Rastro embutido neste site" com o botão:
+
+- **Instalar o Rastro** (plugin ausente; precisa de `install_plugins` e
+  `activate_plugins`): lê a última versão, baixa e confere pelo mesmo
+  caminho do atualizador (seção 2, passos 2 e 3), instala com o
+  `Plugin_Upgrader` a partir do arquivo local (pasta `rastro/`, nome e
+  versão conferidos) e ativa.
+- **Ativar o Rastro** (instalado e desativado; `activate_plugins`).
+
+O clique vai por `admin-post` com nonce próprio (`rastro_instalar_plugin`) e
+volta para Plugins com um código curto (texto fixo, nada vindo da URL vira
+texto). Nada é instalado sem o clique. Na página seguinte o plugin próprio
+carrega primeiro e a cópia embutida fica parada; as opções do Rastro são as
+mesmas e nada se perde.
+
+Para o site que embute: depois do plugin próprio ativo, a cópia embutida
+pode continuar no pacote como reserva (só roda se o plugin próprio for
+desativado) e deve vir sempre de uma versão publicada, sem edição local.

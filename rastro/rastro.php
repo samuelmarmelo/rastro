@@ -64,6 +64,7 @@ if ( ! function_exists( 'rastro_modulos' ) ) {
 		);
 		if ( is_admin() ) {
 			$modulos[] = 'admin/admin.php';
+			$modulos[] = 'atualizacao/instalador.php';
 		}
 
 		/**
