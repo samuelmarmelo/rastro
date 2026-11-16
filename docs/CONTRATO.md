@@ -8,7 +8,7 @@
 >
 > Manuais de cada parte: `docs/BASE.md`, `docs/CONSENTIMENTO.md`,
 > `docs/TAGS.md`, `docs/EVENTOS.md`, `docs/ATRIBUICAO.md`,
-> `docs/RELATORIOS.md`. Atualização e releases: `docs/ATUALIZADOR.md` e
+> `docs/RELATORIOS.md`, `docs/LOGS.md`. Atualização e releases: `docs/ATUALIZADOR.md` e
 > `docs/RELEASE.md`.
 
 ## 1. Regras gerais
@@ -102,6 +102,8 @@ rastro/
 │   ├── config.php                esquema único de campos, leitura, validação (T1)
 │   ├── regras.php                onde medir, cópia local, equipe, contexto da página (T1)
 │   └── saida.php                 configuração para o navegador, registro de scripts, exclusão dos otimizadores (T1)
+├── logs/
+│   └── logs.php                  logs do servidor e chave `logs` do navegador no PostHog Logs (seção 15)
 ├── admin/
 │   └── admin.php                 menu, abas, formulário gerado pelo esquema, salvar (T1)
 ├── consentimento/
@@ -150,6 +152,8 @@ rótulo, ajuda, padrão e regra. A tela, o salvar e a leitura saem dele.
 | `openai_debug` | geral | `1` ou `0` | `0` |
 | `posthog` | geral | `^phc_[A-Za-z0-9]{20,80}$` | `''` |
 | `posthog_regiao` | geral | `us` ou `eu` | `us` |
+| `posthog_logs` | geral | `1` ou `0` (logs do Rastro no PostHog Logs, seção 15) | `1` |
+| `posthog_logs_console` | geral | `1` ou `0` (console do navegador nos logs) | `0` |
 | `google_verificacao` | geral | `^[A-Za-z0-9_-]{20,100}$` (só o valor de `content`; se colarem a tag inteira, o valor é extraído) | `''` |
 | `carregamento` | geral | `ocioso`, `interacao` ou `imediato` | `ocioso` |
 | `eventos_loja` | eventos | `1` ou `0` | `1` |
@@ -595,3 +599,23 @@ antes de usar): Meta `ViewContent`, `AddToCart`, `InitiateCheckout`,
 `PlaceAnOrder`, `CompletePayment`; GA4 `view_item`, `view_item_list`,
 `add_to_cart`, `remove_from_cart`, `begin_checkout`, `purchase`; Google Ads
 `conversion` com `send_to: AW-ID/rótulo`, sem itens.
+
+## 15. Logs no PostHog
+
+Manual: `docs/LOGS.md`. Com a chave do PostHog e `posthog_logs` ligado:
+
+- **Servidor:** `rastro_log( $nivel, $mensagem, $atributos )` manda um
+  registro OTLP/HTTP JSON para `<host da região>/i/v1/logs` com
+  `Authorization: Bearer <chave do projeto>`, não bloqueante, até 10 por
+  requisição. A ação `rastro_falha` vira log `error`. Sem dado pessoal
+  (máscaras de e-mail, CPF, telefone, número de pedido e números longos;
+  sem a pasta da instalação). Cópia local não envia; filtro
+  `rastro_logs_ativo` desliga. Não mede visitantes, então não depende do
+  aviso de cookies.
+- **Navegador:** o `posthog.init` leva `logs` (`serviceName: rastro`,
+  `environment`, `serviceVersion`, `captureConsoleLogs` só com
+  `posthog_logs_console`). `window.rastro.log( nivel, mensagem, atributos )`
+  usa `posthog.captureLog`; antes do PostHog carregar, fila curta na memória,
+  descartada sem aceite. Segue o consentimento de análise.
+- O módulo é opcional (SafeWidget): sem `logs/logs.php`, o `tags.php` segue
+  igual e o `posthog.init` vai sem `logs`.

@@ -28,7 +28,7 @@ uma ponte do site (contrato, seção 9). Os testes carregam os arquivos direto.
 - Carga imediata ao incluir (vale em `plugins_loaded`, como plugin próprio, e
   em `after_setup_theme`, embutido).
 - `rastro_modulos()` já traz a lista inteira, na ordem: `nucleo/config.php`,
-  `nucleo/regras.php`, `nucleo/saida.php`, `consentimento/consentimento.php`,
+  `nucleo/regras.php`, `nucleo/saida.php`, `logs/logs.php`, `consentimento/consentimento.php`,
   `consentimento/aviso.php`, `tags/tags.php`, `loja/eventos.php`,
   `atribuicao/atribuicao.php`, `atribuicao/pedido.php`,
   `relatorios/dados.php`, `relatorios/relatorios.php` e, só no painel,
@@ -49,6 +49,8 @@ uma ponte do site (contrato, seção 9). Os testes carregam os arquivos direto.
 | `openai_debug` | geral | booleano | `'1'` ou `'0'` | `'0'` |
 | `posthog` | geral | id | `/^phc_[A-Za-z0-9]{20,80}$/D` | `''` |
 | `posthog_regiao` | geral | selecao | `us`, `eu` | `us` |
+| `posthog_logs` | geral | booleano | logs no PostHog Logs (`docs/LOGS.md`) | `'1'` |
+| `posthog_logs_console` | geral | booleano | console do navegador nos logs | `'0'` |
 | `google_verificacao` | geral | id | `/^[A-Za-z0-9_-]{20,100}$/D`; aceita a tag `<meta>` colada (fica o `content`) | `''` |
 | `carregamento` | geral | selecao | `ocioso`, `interacao`, `imediato` | `ocioso` |
 | `eventos_loja` | eventos | booleano | | `'1'` |

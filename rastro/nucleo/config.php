@@ -191,6 +191,22 @@ function rastro_config_esquema(): array {
 				'eu' => __( 'Europa (eu)', 'rastro' ),
 			),
 		),
+		'posthog_logs'                 => array(
+			'aba'    => 'geral',
+			'tipo'   => 'booleano',
+			'rotulo' => __( 'Logs do PostHog', 'rastro' ),
+			'marca'  => __( 'Enviar os logs do Rastro para o PostHog Logs', 'rastro' ),
+			'ajuda'  => __( 'Só com a chave do PostHog. Falhas do Rastro no servidor (sem dado pessoal) e, depois do aceite de análise, no navegador.', 'rastro' ),
+			'padrao' => '1',
+		),
+		'posthog_logs_console'         => array(
+			'aba'    => 'geral',
+			'tipo'   => 'booleano',
+			'rotulo' => __( 'Console do navegador nos logs', 'rastro' ),
+			'marca'  => __( 'Enviar também o console do navegador (console.log, warn e error)', 'rastro' ),
+			'ajuda'  => __( 'Só para investigar um problema: o console pode levar o que outros scripts escrevem nele. Desligue depois de conferir.', 'rastro' ),
+			'padrao' => '0',
+		),
 		'google_verificacao'           => array(
 			'aba'             => 'geral',
 			'tipo'            => 'id',

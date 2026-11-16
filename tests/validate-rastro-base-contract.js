@@ -125,7 +125,7 @@ tem(plugin, "define( 'RASTRO_URL', rtrim( (string) plugins_url( '', RASTRO_ARQUI
 const lista = plugin.slice(plugin.indexOf('$modulos = array('), plugin.indexOf("apply_filters( 'rastro_modulos'"));
 const modulos = [...lista.matchAll(/'([a-z/._-]+\.php)'/g)].map((m) => m[1]);
 assert.deepEqual(modulos, [
-  'nucleo/config.php', 'nucleo/regras.php', 'nucleo/saida.php',
+  'nucleo/config.php', 'nucleo/regras.php', 'nucleo/saida.php', 'logs/logs.php',
   'consentimento/consentimento.php', 'consentimento/aviso.php',
   'tags/tags.php', 'loja/eventos.php',
   'atribuicao/atribuicao.php', 'atribuicao/pedido.php',
@@ -159,7 +159,7 @@ for (const assinatura of [
 tem(config, "const RASTRO_OPCAO = 'rastro_config';");
 tem(config, 'update_option( RASTRO_OPCAO, $novo, true );', 'uma opção só, com autoload');
 tem(config, "apply_filters( 'rastro_config', $config )");
-for (const chave of ['gtm', 'ga4', 'ads', 'ads_rotulo_compra', 'meta', 'tiktok', 'openai', 'openai_debug', 'posthog', 'posthog_regiao', 'google_verificacao', 'carregamento', 'eventos_loja', 'valor_compra', 'id_produto', 'status_relatorio', 'atribuicao', 'atribuicao_utm_sempre', 'atribuicao_dias', 'atribuicao_woo_consentimento', 'modo', 'aceite_segundos', 'aviso', 'aviso_texto', 'aviso_dias', 'medir_equipe']) {
+for (const chave of ['gtm', 'ga4', 'ads', 'ads_rotulo_compra', 'meta', 'tiktok', 'openai', 'openai_debug', 'posthog', 'posthog_regiao', 'posthog_logs', 'posthog_logs_console', 'google_verificacao', 'carregamento', 'eventos_loja', 'valor_compra', 'id_produto', 'status_relatorio', 'atribuicao', 'atribuicao_utm_sempre', 'atribuicao_dias', 'atribuicao_woo_consentimento', 'modo', 'aceite_segundos', 'aviso', 'aviso_texto', 'aviso_dias', 'medir_equipe']) {
   comMatch(config, new RegExp(`\\n\\t\\t'${chave}'\\s+=> array\\(`), `campo ${chave} no esquema`);
 }
 for (const evento of ['view_item_list', 'view_item', 'add_to_cart', 'remove_from_cart', 'view_cart', 'begin_checkout', 'add_payment_info', 'purchase', 'search']) {

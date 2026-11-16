@@ -51,6 +51,7 @@ if ( ! function_exists( 'rastro_modulos' ) ) {
 			'nucleo/config.php',
 			'nucleo/regras.php',
 			'nucleo/saida.php',
+			'logs/logs.php',
 			'consentimento/consentimento.php',
 			'consentimento/aviso.php',
 			'tags/tags.php',

@@ -68,6 +68,8 @@
 	var LIMITE_OCIOSO = 2000;
 	var LIMITE_INTERACAO = 8000;
 	var FILA_MAXIMA = 100;
+	var LOGS_MAXIMO = 20;
+	var NIVEIS_LOG = { debug: 1, info: 1, warn: 1, error: 1 };
 	// Eventos com objeto ecommerce no dataLayer (formato do GA4).
 	var ECOMMERCE = { view_item_list: 1, view_item: 1, select_item: 1, add_to_cart: 1, remove_from_cart: 1, view_cart: 1, begin_checkout: 1, add_shipping_info: 1, add_payment_info: 1, purchase: 1, refund: 1 };
 	// Mapa da seção 6 do contrato.
@@ -83,6 +85,7 @@
 	var scripts = {};
 	var conectados = {};
 	var fila = [];
+	var filaLogs = [];
 	var parado = false;
 	var portaAberta = false;
 	var agendado = false;
@@ -317,6 +320,10 @@
 			/* eslint-disable */
 			!function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}p||((p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",p.onerror=function(){p=null},(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r));var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],Object.defineProperty(u,"toString",{configurable:!0,enumerable:!0,writable:!0,value:function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e}}),Object.defineProperty(u.people,"toString",{configurable:!0,enumerable:!0,writable:!0,value:function(){return u.toString(1)+".people (stub)"}}),o="mh bh wh xh init Xh ed Gh Jh od ac Yh ad Uh fd pd gd md yd bd capture getExtension nd mr Zh Kh calculateEventProperties wd register register_once register_for_session unregister unregister_for_session Cd Vh Sd getFeatureFlag getFeatureFlagPayload getFeatureFlagResult getAllFeatureFlags isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys onActiveMatchingSurveysChanged renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync Td identify setPersonProperties unsetPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset Id shutdown setIdentity clearIdentity get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException addExceptionStep captureLog startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty xd hd createPersonProfile setInternalOrTestUser $d Ih Ch opt_in_capturing opt_out_capturing Th has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing ld debug lc Fs getPageViewId captureTraceFeedback captureTraceMetric qh".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
 			/* eslint-enable */
+			opcoes.logs = logsValidos( opcoes.logs );
+			if ( ! opcoes.logs ) {
+				delete opcoes.logs;
+			}
 			opcoes.before_send = limparEventoPosthog;
 			opcoes.session_recording = opcoes.session_recording || {};
 			opcoes.session_recording.maskCapturedNetworkRequestFn = function ( r ) {
@@ -328,6 +335,77 @@
 			w.posthog.init( c.id, opcoes );
 		}
 	};
+
+	/* Logs do PostHog ----------------------------------------------------------- */
+
+	// Chave `logs` do posthog.init: só os campos conhecidos, com o tipo certo.
+	function logsValidos( l ) {
+		if ( ! l || 'object' !== typeof l || 'string' !== typeof l.serviceName || ! /^[a-z0-9_.-]{1,40}$/.test( l.serviceName ) ) {
+			return null;
+		}
+		var saida = { serviceName: l.serviceName, captureConsoleLogs: true === l.captureConsoleLogs };
+		if ( 'string' === typeof l.environment && /^[a-z]{1,20}$/.test( l.environment ) ) {
+			saida.environment = l.environment;
+		}
+		if ( 'string' === typeof l.serviceVersion && /^[0-9]+\.[0-9]+\.[0-9]+$/.test( l.serviceVersion ) ) {
+			saida.serviceVersion = l.serviceVersion;
+		}
+		return saida;
+	}
+
+	function logsLigados() {
+		var dest = destinos.posthog;
+		return !! ( dest && dest.c.config && logsValidos( dest.c.config.logs ) );
+	}
+
+	function entregarLog( item ) {
+		try {
+			if ( w.posthog && 'function' === typeof w.posthog.captureLog ) {
+				w.posthog.captureLog( item );
+			}
+		} catch ( e ) {}
+	}
+
+	// window.rastro.log( nivel, mensagem, atributos ): log no PostHog Logs. Só
+	// com os logs ligados; antes do PostHog carregar, fica numa fila curta na
+	// memória (descartada sem aceite). Atributos só com valores simples.
+	function registrarLog( nivel, mensagem, atributos ) {
+		if ( parado || ! logsLigados() || 'string' !== typeof mensagem || '' === mensagem ) {
+			return false;
+		}
+		var attrs = {};
+		if ( atributos && 'object' === typeof atributos ) {
+			for ( var k in atributos ) {
+				if ( Object.prototype.hasOwnProperty.call( atributos, k ) && /^[A-Za-z0-9_.-]{1,64}$/.test( k ) ) {
+					var v = atributos[ k ];
+					if ( 'string' === typeof v ) {
+						attrs[ k ] = semConsulta( v ).slice( 0, 500 );
+					} else if ( 'number' === typeof v || 'boolean' === typeof v ) {
+						attrs[ k ] = v;
+					}
+				}
+			}
+		}
+		var item = { body: mensagem.slice( 0, 2000 ), level: de( NIVEIS_LOG, nivel ) ? nivel : 'info', attributes: attrs };
+		if ( carregados.posthog ) {
+			entregarLog( item );
+			return true;
+		}
+		if ( semAceite() ) {
+			return false;
+		}
+		filaLogs.push( item );
+		if ( filaLogs.length > LOGS_MAXIMO ) {
+			filaLogs.shift();
+		}
+		return true;
+	}
+
+	function entregarFilaLogs() {
+		var pendentes = filaLogs;
+		filaLogs = [];
+		pendentes.forEach( entregarLog );
+	}
 
 	/* Endereços no PostHog ------------------------------------------------------ */
 
@@ -652,9 +730,13 @@
 				CARREGAR[ chave ]( destinos[ chave ].c );
 				carregados[ chave ] = true;
 			} catch ( e ) {
+				registrarLog( 'error', 'Falha ao carregar o destino ' + chave, { destino: chave, erro: e && e.name ? String( e.name ) : 'Error' } );
 				return;
 			}
 			entregarFila( chave );
+			if ( 'posthog' === chave ) {
+				entregarFilaLogs();
+			}
 		} );
 	}
 
@@ -755,6 +837,7 @@
 		}
 		parado = true;
 		fila = [];
+		filaLogs = [];
 		limparAgenda();
 		try {
 			if ( carregados.posthog && w.posthog && 'function' === typeof w.posthog.opt_out_capturing ) {
@@ -804,6 +887,7 @@
 		if ( ! estado.analise && ! estado.publicidade ) {
 			if ( estado.decidido ) {
 				fila = [];
+				filaLogs = [];
 			}
 			return;
 		}
@@ -811,6 +895,7 @@
 	}
 
 	w.rastro.event = evento;
+	w.rastro.log = registrarLog;
 
 	// Eventos chamados antes deste arquivo (eventos.js da loja usa a fila
 	// window.rastroFilaEventos: [ nome, params, opcoes ]), na ordem, e a fila
