@@ -1,0 +1,35 @@
+name: Problema
+description: Algo no Rastro não funciona como o manual descreve.
+labels: [problema]
+body:
+  - type: markdown
+    attributes:
+      value: Não cole IDs reais de produção, chaves, dados de clientes nem de pedidos. Falha de segurança vai pelo relato privado.
+  - type: input
+    id: versoes
+    attributes:
+      label: Versões
+      description: Rastro, WordPress, WooCommerce (se houver) e PHP.
+      placeholder: Rastro 1.0.0, WordPress 6.8, WooCommerce 10.2, PHP 8.3
+    validations:
+      required: true
+  - type: dropdown
+    id: modo
+    attributes:
+      label: Modo de consentimento
+      options: [lgpd, aceite_automatico, basico]
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passo a passo
+      description: O que fazer para ver o problema.
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que era esperado e o que aconteceu
+    validations:
+      required: true
