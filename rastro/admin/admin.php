@@ -39,6 +39,7 @@ function rastro_admin_abas_esquema(): array {
 		'eventos'       => __( 'Eventos', 'rastro' ),
 		'woocommerce'   => __( 'WooCommerce', 'rastro' ),
 		'consentimento' => __( 'Consentimento', 'rastro' ),
+		'verificacao'   => __( 'Verificações', 'rastro' ),
 	);
 }
 
@@ -52,12 +53,14 @@ function rastro_admin_abas_esquema(): array {
 function rastro_admin_abas(): array {
 	$abas  = array();
 	$ordem = 10;
+	// Verificações antes de Relatórios (ordem 50, frente T6), sem empate.
+	$fixas = array( 'verificacao' => 45 );
 	foreach ( rastro_admin_abas_esquema() as $chave => $titulo ) {
 		$abas[ $chave ] = array(
 			'titulo'     => $titulo,
 			'capacidade' => RASTRO_ADMIN_CAPACIDADE,
 			'callback'   => 'rastro_admin_aba_campos',
-			'ordem'      => $ordem,
+			'ordem'      => isset( $fixas[ $chave ] ) ? $fixas[ $chave ] : $ordem,
 		);
 		$ordem         += 10;
 	}

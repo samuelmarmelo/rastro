@@ -703,7 +703,7 @@ rastro_teste_reset( array( 'admin' => true, 'capacidades' => $cap_loja ) );
 confere( 'só gerente da loja: vê só os relatórios', array_keys( rastro_admin_abas_visiveis() ), array( 'relatorios' ) );
 confere( 'só gerente da loja: capacidade do menu', rastro_admin_capacidade_menu(), 'manage_woocommerce' );
 rastro_teste_reset( array( 'admin' => true, 'capacidades' => $cap_admin ) );
-confere( 'aba Relatórios por último', array_keys( rastro_admin_abas_visiveis() ), array( 'geral', 'eventos', 'woocommerce', 'consentimento', 'relatorios' ) );
+confere( 'aba Relatórios por último', array_keys( rastro_admin_abas_visiveis() ), array( 'geral', 'eventos', 'woocommerce', 'consentimento', 'verificacao', 'relatorios' ) );
 
 // Arquivos só na tela do Rastro, aba Relatórios.
 rastro_admin_tela_id( 'toplevel_page_rastro' );

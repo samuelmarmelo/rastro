@@ -51,7 +51,8 @@ uma ponte do site (contrato, seção 9). Os testes carregam os arquivos direto.
 | `posthog_regiao` | geral | selecao | `us`, `eu` | `us` |
 | `posthog_logs` | geral | booleano | logs no PostHog Logs (`docs/LOGS.md`) | `'1'` |
 | `posthog_logs_console` | geral | booleano | console do navegador nos logs | `'0'` |
-| `google_verificacao` | geral | id | `/^[A-Za-z0-9_-]{20,100}$/D`; aceita a tag `<meta>` colada (fica o `content`) | `''` |
+| `google_verificacao` | verificacao | id | `/^[A-Za-z0-9_-]{20,100}$/D`; aceita a tag `<meta>` colada (fica o `content`) | `''` |
+| `facebook_verificacao` | verificacao | id | `/^[A-Za-z0-9]{20,64}$/D`; aceita a tag `<meta>` colada | `''` |
 | `carregamento` | geral | selecao | `ocioso`, `interacao`, `imediato` | `ocioso` |
 | `eventos_loja` | eventos | booleano | | `'1'` |
 | `evento_view_item_list`, `evento_view_item`, `evento_add_to_cart`, `evento_remove_from_cart`, `evento_view_cart`, `evento_begin_checkout`, `evento_add_payment_info`, `evento_purchase`, `evento_search` | eventos | booleano | | `'1'` |

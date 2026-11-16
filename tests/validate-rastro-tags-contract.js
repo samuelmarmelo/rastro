@@ -70,7 +70,9 @@ tem(php, "rastro_registrar_script( 'rastro-tags', 'tags.js', $deps )", 'registro
 tem(php, "wp_script_is( 'rastro-tags', 'enqueued' )", 'chave tags só com o script na página');
 const enfileirar = php.slice(php.indexOf('function rastro_tags_enfileirar'));
 assert.ok(enfileirar.indexOf('rastro_deve_medir()') < enfileirar.indexOf('rastro_registrar_script('), 'tags.js só quando a página mede');
-tem(php, '\'<meta name="google-site-verification" content="\' . esc_attr( $limpo ) . \'" />\'', 'meta com esc_attr');
+tem(php, `'<meta name="' . esc_attr( $nomes[ $chave ] ) . '" content="' . esc_attr( $limpo ) . '" />'`, 'meta com esc_attr');
+tem(php, "'google_verificacao'   => 'google-site-verification',", 'nome da meta do Google');
+tem(php, "'facebook_verificacao' => 'facebook-domain-verification',", 'nome da meta da Meta');
 tem(php, "rastro_tags_id( 'google_verificacao', $valor )", 'verificação validada de novo na impressão');
 const metaFn = php.slice(php.indexOf('function rastro_tags_meta_verificacao'), php.indexOf("add_action( 'wp_head', 'rastro_tags_meta_verificacao'"));
 tem(metaFn, 'rastro_requisicao_restrita()', 'meta fora do painel e do login');

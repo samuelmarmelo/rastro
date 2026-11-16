@@ -158,7 +158,8 @@ rótulo, ajuda, padrão e regra. A tela, o salvar e a leitura saem dele.
 | `posthog_regiao` | geral | `us` ou `eu` | `us` |
 | `posthog_logs` | geral | `1` ou `0` (logs do Rastro no PostHog Logs, seção 15) | `1` |
 | `posthog_logs_console` | geral | `1` ou `0` (console do navegador nos logs) | `0` |
-| `google_verificacao` | geral | `^[A-Za-z0-9_-]{20,100}$` (só o valor de `content`; se colarem a tag inteira, o valor é extraído) | `''` |
+| `google_verificacao` | verificacao | `^[A-Za-z0-9_-]{20,100}$` (só o valor de `content`; se colarem a tag inteira, o valor é extraído) | `''` |
+| `facebook_verificacao` | verificacao | `^[A-Za-z0-9]{20,64}$` (meta `facebook-domain-verification`; tag colada vira o valor) | `''` |
 | `carregamento` | geral | `ocioso`, `interacao` ou `imediato` | `ocioso` |
 | `eventos_loja` | eventos | `1` ou `0` | `1` |
 | `evento_*` (um por evento da seção 6) | eventos | `1` ou `0` | `1` |
@@ -242,7 +243,7 @@ formulários (PostHog do Rastro com `autocapture` desligado ali).
 ### 3.4 Painel (T1, `admin/admin.php`)
 
 Menu próprio "Rastro" (`dashicons-chart-line`, `manage_options`), slug
-`rastro`. Abas: **Geral**, **Eventos**, **WooCommerce**, **Consentimento**
+`rastro`. Abas: **Geral**, **Eventos**, **WooCommerce**, **Consentimento**, **Verificações** (ordem 45)
 (campos do esquema) e **Relatórios** (T6, `manage_woocommerce`). Registro de
 abas pelo filtro `rastro_admin_abas` (`titulo`, `capacidade`, `callback`,
 `ordem`). Salvar: `admin-post` `rastro_salvar`, nonce, capacidade, PRG com
