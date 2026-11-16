@@ -79,7 +79,7 @@ function rastro_instalador_mensagens(): array {
 		'instalado'  => array( 'success', __( 'Rastro instalado e ativado. A partir de agora ele recebe as versões assinadas sozinho.', 'rastro' ) ),
 		'ativado'    => array( 'success', __( 'Rastro ativado.', 'rastro' ) ),
 		'ja_ativo'   => array( 'success', __( 'O Rastro já está ativo como plugin próprio.', 'rastro' ) ),
-		'sem_versao' => array( 'error', __( 'Não foi possível ler a última versão no servidor de atualizações. Nada foi instalado; tente de novo mais tarde.', 'rastro' ) ),
+		'sem_versao' => array( 'error', __( 'Não foi possível ler a última versão do Rastro no GitHub. Nada foi instalado; tente de novo mais tarde.', 'rastro' ) ),
 		'pacote'     => array( 'error', __( 'O pacote baixado não passou na conferência (tamanho, checksum ou assinatura). Nada foi instalado.', 'rastro' ) ),
 		'instalar'   => array( 'error', __( 'O WordPress não conseguiu instalar o Rastro (permissão de escrita na pasta de plugins?). Nada foi ativado.', 'rastro' ) ),
 		'ativar'     => array( 'error', __( 'O Rastro foi instalado, mas não foi possível ativá-lo. Ative em Plugins.', 'rastro' ) ),
@@ -155,7 +155,7 @@ function rastro_instalador_aviso() {
 		echo '<div class="notice notice-info"><p><strong>' . esc_html__( 'Rastro embutido neste site', 'rastro' ) . '</strong></p><p>';
 		printf(
 			/* translators: %s: versão embutida. */
-			esc_html__( 'O Rastro deste site (versão %s) vem embutido no tema ou em outro plugin e só muda quando eles mudam. Instale o plugin Rastro para receber sozinho as versões novas, conferidas por assinatura. As configurações continuam as mesmas.', 'rastro' ),
+			esc_html__( 'O Rastro deste site (versão %s) vem embutido no tema ou em outro plugin e só muda quando eles mudam. Instale o plugin Rastro para receber sozinho as versões novas publicadas no GitHub (samuelmarmelo/rastro), conferidas por assinatura. As configurações continuam as mesmas.', 'rastro' ),
 			esc_html( RASTRO_VERSAO )
 		);
 		echo '</p>' . rastro_instalador_botao( $estado ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- botão montado com escape.

@@ -22,9 +22,8 @@ const semMatch = (t, re, m) => assert.ok(!re.test(t), m || String(re));
 const tem = (t, s, m) => assert.ok(t.includes(s), m || s);
 
 const R = 'rastro/';
-// Travessão (U+2014) e o nome da plataforma de código montados pelo código.
+// Travessão (U+2014) montado pelo código.
 const TRAVESSAO = new RegExp(String.fromCharCode(0x2014));
-const PLATAFORMA = new RegExp('Git' + 'Hub', 'i');
 
 // 1. Arquivos da frente.
 const PHP_CONSENT = R + 'consentimento/consentimento.php';
@@ -39,7 +38,6 @@ for (const arquivo of arquivos) {
   const bruto = lerBruto(arquivo);
   semMatch(bruto, /\r/, `${arquivo} com fim de linha LF`);
   semMatch(bruto, TRAVESSAO, `${arquivo} sem travessão`);
-  semMatch(bruto, PLATAFORMA, `${arquivo} sem o nome da plataforma de código`);
 }
 for (const arquivo of [PHP_CONSENT, PHP_AVISO, JS, CSS]) {
   const texto = ler(arquivo);

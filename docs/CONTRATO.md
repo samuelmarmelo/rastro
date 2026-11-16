@@ -44,7 +44,7 @@
 8. **Soft delete:** nada é apagado. Opções, metas e arquivos antigos ficam;
    o que sai de uso é arquivado.
 9. Regras da casa: componentes reutilizáveis, textos visíveis em pt-BR sem
-   "GitHub" e sem travessão, uma branch por frente, contrato de teste por
+   travessão (o Rastro é público, então citar o GitHub vale), uma branch por frente, contrato de teste por
    frente (`tests/validate-rastro-*.js` e `tests/php/rastro-*.test.php`),
    documentação por frente em `docs/`.
 

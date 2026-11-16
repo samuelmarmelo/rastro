@@ -31,8 +31,6 @@ const tem = (t, s, m) => assert.ok(t.includes(s), m || s);
 const R = 'rastro/';
 // Travessão (U+2014) montado pelo código, para este arquivo não conter o caractere.
 const TRAVESSAO = new RegExp(String.fromCharCode(0x2014));
-// O nome da plataforma de código, montado em partes pelo mesmo motivo.
-const PLATAFORMA = new RegExp('Git' + 'Hub', 'i');
 
 // 1. Arquivos da frente (todos com fim de linha LF).
 const arquivosT1 = [
@@ -68,10 +66,7 @@ function listar(pasta) {
 }
 const doRastro = listar(R);
 const phpDoRastro = doRastro.filter((f) => f.endsWith('.php'));
-// Os seis manuais do plugin (telas e textos que chegam ao WordPress). Os
-// documentos do repositório (README, CONTRATO, ATUALIZADOR, RELEASE,
-// SECURITY) citam a plataforma de código de propósito: é de lá que vêm as
-// versões publicadas.
+// Os seis manuais do plugin (sem travessão, como o código).
 const docsRastro = ['BASE', 'CONSENTIMENTO', 'TAGS', 'EVENTOS', 'ATRIBUICAO', 'RELATORIOS'].map((n) => `docs/${n}.md`).filter((f) => fs.existsSync(path.join(root, f)));
 const testesRastro = fs.readdirSync(path.join(root, 'tests')).filter((f) => /^validate-rastro-.*\.js$/.test(f)).map((f) => 'tests/' + f)
   .concat(fs.readdirSync(path.join(root, 'tests/php')).filter((f) => /^(rastro-.*\.test|stubs-rastro)\.php$/.test(f)).map((f) => 'tests/php/' + f));
@@ -85,11 +80,6 @@ for (const arquivo of doRastro) {
 for (const arquivo of [...doRastro, ...docsRastro, ...testesRastro]) {
   const texto = ler(arquivo);
   semMatch(texto, TRAVESSAO, `${arquivo} sem travessão`);
-  // O atualizador (atualizacao/) e o cabeçalho `Update URI` precisam dos
-  // endereços do servidor de atualizações; os textos da tela nunca citam a
-  // plataforma (contrato tests/validate-atualizador-contract.js).
-  if (arquivo.startsWith(R + 'atualizacao/')) continue;
-  semMatch(texto.replace(/^ \* Update URI:.*$/m, ''), PLATAFORMA, `${arquivo} sem o nome da plataforma de código`);
 }
 for (const arquivo of phpDoRastro) {
   const texto = ler(arquivo);
