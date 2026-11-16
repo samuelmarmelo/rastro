@@ -472,6 +472,21 @@ foreach ( rastro_tags_regra_avisos( array( 'gtm', 'ga4' ), array( 'X' ), $nomes 
 
 /* 7. Sem falha registrada --------------------------------------------------------------------- */
 
+/* Verificações de domínio (aba Verificações) ------------------------------------------- */
+
+com_config( array( 'facebook_verificacao' => 'abc123def456ghi789jkl012mno345' ), array( 'uri' => '/', 'woo' => array() ) );
+$head = rastro_teste_saida( 'do_action', array( 'wp_head' ) );
+confere( 'Meta: meta de verificação sem destino nenhum', false !== strpos( $head, '<meta name="facebook-domain-verification" content="abc123def456ghi789jkl012mno345" />' ), true );
+com_config( array( 'facebook_verificacao' => '<meta name="facebook-domain-verification" content="abc123def456ghi789jkl012mno345" />' ) );
+confere( 'Meta: tag colada vira o valor', rastro_config()['facebook_verificacao'], 'abc123def456ghi789jkl012mno345' );
+com_config( array( 'facebook_verificacao' => 'abc"><script>alert(1)</script>' ) );
+$head = rastro_teste_saida( 'do_action', array( 'wp_head' ) );
+confere( 'Meta: valor inválido não sai', false !== strpos( $head, 'facebook-domain-verification' ), false );
+com_config( array( 'facebook_verificacao' => 'abc123def456ghi789jkl012mno345' ), array( 'admin' => true ) );
+$head = rastro_teste_saida( 'do_action', array( 'wp_head' ) );
+confere( 'Meta: nada no painel', false !== strpos( $head, 'facebook-domain-verification' ), false );
+confere( 'regra: campo desconhecido não gera meta', rastro_tags_verificacao_html( 'gtm', 'GTM-ABC1234' ), '' );
+
 confere( 'nenhuma falha registrada', $falhas_registradas, array() );
 
 echo "{$total} conferências das tags do Rastro, {$falhas} falha(s).\n";

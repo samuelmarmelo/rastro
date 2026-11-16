@@ -178,14 +178,14 @@ confere( 'RASTRO_LOCAL liga a medição numa cópia local', $c['local'] ?? null,
 novo();
 $esquema = rastro_config_esquema();
 $eventos = array( 'view_item_list', 'view_item', 'add_to_cart', 'remove_from_cart', 'view_cart', 'begin_checkout', 'add_payment_info', 'purchase', 'search' );
-$chaves  = array( 'gtm', 'ga4', 'ads', 'ads_rotulo_compra', 'meta', 'meta_cabecalho', 'tiktok', 'openai', 'openai_debug', 'posthog', 'posthog_regiao', 'posthog_logs', 'posthog_logs_console', 'google_verificacao', 'carregamento', 'eventos_loja' );
+$chaves  = array( 'gtm', 'ga4', 'ads', 'ads_rotulo_compra', 'meta', 'meta_cabecalho', 'tiktok', 'openai', 'openai_debug', 'posthog', 'posthog_regiao', 'posthog_logs', 'posthog_logs_console', 'google_verificacao', 'facebook_verificacao', 'carregamento', 'eventos_loja' );
 foreach ( $eventos as $evento ) {
 	$chaves[] = 'evento_' . $evento;
 }
 $chaves = array_merge( $chaves, array( 'valor_compra', 'id_produto', 'status_relatorio', 'atribuicao', 'atribuicao_utm_sempre', 'atribuicao_dias', 'atribuicao_woo_consentimento', 'modo', 'aceite_segundos', 'aviso', 'aviso_texto', 'aviso_dias', 'medir_equipe' ) );
 confere( 'esquema com as chaves do contrato, na ordem', array_keys( $esquema ), $chaves );
 $tipos = array( 'id', 'texto', 'selecao', 'booleano', 'inteiro', 'lista' );
-$abas  = array( 'geral', 'eventos', 'woocommerce', 'consentimento' );
+$abas  = array( 'geral', 'eventos', 'woocommerce', 'consentimento', 'verificacao' );
 foreach ( $esquema as $chave => $campo ) {
 	confere( "{$chave}: aba válida", in_array( $campo['aba'], $abas, true ), true );
 	confere( "{$chave}: tipo válido", in_array( $campo['tipo'], $tipos, true ), true );
@@ -784,9 +784,9 @@ $admin = array(
 );
 novo( $admin );
 $abas = rastro_admin_abas();
-confere( 'abas do esquema em ordem', array_keys( $abas ), array( 'geral', 'eventos', 'woocommerce', 'consentimento' ) );
-confere( 'abas: ordens 10 a 40', array_column( $abas, 'ordem' ), array( 10, 20, 30, 40 ) );
-confere( 'abas: títulos', array_column( $abas, 'titulo' ), array( 'Geral', 'Eventos', 'WooCommerce', 'Consentimento' ) );
+confere( 'abas do esquema em ordem', array_keys( $abas ), array( 'geral', 'eventos', 'woocommerce', 'consentimento', 'verificacao' ) );
+confere( 'abas: ordens 10 a 40 e 45', array_column( $abas, 'ordem' ), array( 10, 20, 30, 40, 45 ) );
+confere( 'abas: títulos', array_column( $abas, 'titulo' ), array( 'Geral', 'Eventos', 'WooCommerce', 'Consentimento', 'Verificações' ) );
 confere( 'abas: só administrador', array_unique( array_column( $abas, 'capacidade' ) ), array( 'manage_options' ) );
 add_filter(
 	'rastro_admin_abas',
@@ -799,7 +799,7 @@ add_filter(
 	}
 );
 $abas = rastro_admin_abas();
-confere( 'abas do filtro: ordenadas e validadas', array_keys( $abas ), array( 'primeira', 'geral', 'eventos', 'woocommerce', 'consentimento', 'relatorios' ) );
+confere( 'abas do filtro: ordenadas e validadas', array_keys( $abas ), array( 'primeira', 'geral', 'eventos', 'woocommerce', 'consentimento', 'verificacao', 'relatorios' ) );
 confere( 'aba sem capacidade: manage_options', $abas['primeira']['capacidade'], 'manage_options' );
 confere( 'aba de relatórios fora da vista do administrador sem manage_woocommerce', array_key_exists( 'relatorios', rastro_admin_abas_visiveis() ), false );
 novo( array( 'admin' => true, 'logado' => true, 'capacidades' => array( 'manage_woocommerce' => true ) ) );
@@ -850,7 +850,7 @@ confere( 'avisos validados', rastro_admin_avisos(), array( array( 'tipo' => 'war
 $tela = rastro_teste_saida( 'rastro_admin_tela' );
 remove_all_filters( 'rastro_admin_avisos' );
 confere( 'tela: wrap e título', false !== strpos( $tela, '<div class="wrap rastro-painel"><h1>Rastro</h1>' ), true );
-confere( 'tela: quatro abas', substr_count( $tela, '<a class="nav-tab' ), 4 );
+confere( 'tela: cinco abas', substr_count( $tela, '<a class="nav-tab' ), 5 );
 confere( 'tela: aba atual marcada', false !== strpos( $tela, 'nav-tab nav-tab-active" href="https://loja.exemplo.com.br/wp-admin/admin.php?page=rastro&amp;aba=geral" aria-current="page"' ), true );
 confere( 'tela: aviso do filtro escapado', false !== strpos( $tela, 'Outro plugin &lt;script&gt;x&lt;/script&gt; mede a loja.' ) && false === strpos( $tela, '<script>x' ), true );
 confere( 'tela: avisos com role status', substr_count( $tela, 'role="status"' ), 2 );
@@ -864,8 +864,8 @@ confere( 'tela: formulário para o admin-post', false !== strpos( $tela, '<form 
 confere( 'tela: ação rastro_salvar', false !== strpos( $tela, 'name="action" value="rastro_salvar"' ), true );
 confere( 'tela: aba no formulário', false !== strpos( $tela, 'name="aba" value="geral"' ), true );
 confere( 'tela: nonce', false !== strpos( $tela, 'name="_wpnonce" value="' . wp_create_nonce( 'rastro_salvar' ) . '"' ), true );
-confere( 'tela: campos da aba Geral', preg_match_all( '/name="rastro\[([a-z0-9_]+)\]/', $tela, $nomes ) > 0 ? array_values( array_unique( $nomes[1] ) ) : array(), array( 'gtm', 'ga4', 'ads', 'ads_rotulo_compra', 'meta', 'meta_cabecalho', 'tiktok', 'openai', 'openai_debug', 'posthog', 'posthog_regiao', 'posthog_logs', 'posthog_logs_console', 'google_verificacao', 'carregamento' ) );
-confere( 'tela: IDs sem preenchimento automático', substr_count( $tela, 'autocomplete="off" spellcheck="false"' ), 9 );
+confere( 'tela: campos da aba Geral', preg_match_all( '/name="rastro\[([a-z0-9_]+)\]/', $tela, $nomes ) > 0 ? array_values( array_unique( $nomes[1] ) ) : array(), array( 'gtm', 'ga4', 'ads', 'ads_rotulo_compra', 'meta', 'meta_cabecalho', 'tiktok', 'openai', 'openai_debug', 'posthog', 'posthog_regiao', 'posthog_logs', 'posthog_logs_console', 'carregamento' ) );
+confere( 'tela: IDs sem preenchimento automático', substr_count( $tela, 'autocomplete="off" spellcheck="false"' ), 8 );
 confere( 'tela: valor guardado no campo', false !== strpos( $tela, 'name="rastro[ga4]" value="G-ABC1234"' ), true );
 confere( 'tela: seleção marcada', false !== strpos( $tela, '<option value="ocioso" selected=\'selected\'>' ), true );
 confere( 'tela: ajuda ligada ao campo', false !== strpos( $tela, 'aria-describedby="rastro-campo-gtm-ajuda"' ) && false !== strpos( $tela, 'id="rastro-campo-gtm-ajuda"' ), true );
@@ -927,8 +927,11 @@ confere( 'salvar aba: lista', $r['config']['status_relatorio'], array( 'complete
 confere( 'salvar aba: seleção ausente volta ao padrão', $r['config']['id_produto'], 'id' );
 $r = rastro_admin_salvar_dados( 'woocommerce', array() );
 confere( 'salvar aba: lista sem nenhum marcado volta ao padrão', $r['config']['status_relatorio'], array( 'processing', 'completed' ) );
-$r = rastro_admin_salvar_dados( 'geral', array( 'google_verificacao' => '<meta name="google-site-verification" content="AbCdEfGhIjKlMnOpQrStUv-_123" />', 'gtm' => 'gtm-bbbb2222' ) );
+$r = rastro_admin_salvar_dados( 'verificacao', array( 'google_verificacao' => '<meta name="google-site-verification" content="AbCdEfGhIjKlMnOpQrStUv-_123" />', 'facebook_verificacao' => '<meta name="facebook-domain-verification" content="abc123def456ghi789jkl012mno345" />', 'gtm' => 'GTM-ZZZZ9999' ) );
 confere( 'salvar aba: tag de verificação colada vira o valor', $r['config']['google_verificacao'], 'AbCdEfGhIjKlMnOpQrStUv-_123' );
+confere( 'salvar aba: verificação da Meta colada vira o valor', $r['config']['facebook_verificacao'], 'abc123def456ghi789jkl012mno345' );
+confere( 'salvar aba: campo de outra aba não grava', $r['config']['gtm'] !== 'GTM-ZZZZ9999', true );
+$r = rastro_admin_salvar_dados( 'geral', array( 'gtm' => 'gtm-bbbb2222' ) );
 confere( 'salvar aba: maiúsculas', $r['config']['gtm'], 'GTM-BBBB2222' );
 confere( 'salvar aba: ID ausente no envio vira vazio', $r['config']['meta'], '' );
 confere( 'salvar aba: aba que não é do esquema', rastro_admin_salvar_dados( 'relatorios', array( 'gtm' => 'GTM-CCCC3333' ) ), null );

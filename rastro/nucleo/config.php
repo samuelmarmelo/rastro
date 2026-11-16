@@ -216,7 +216,7 @@ function rastro_config_esquema(): array {
 			'padrao' => '0',
 		),
 		'google_verificacao'           => array(
-			'aba'             => 'geral',
+			'aba'             => 'verificacao',
 			'tipo'            => 'id',
 			'rotulo'          => __( 'Verificação do Google (Search Console)', 'rastro' ),
 			'ajuda'           => __( 'O valor de content da tag google-site-verification. Pode colar a tag inteira: só o valor é guardado. Vazio desliga.', 'rastro' ),
@@ -224,6 +224,16 @@ function rastro_config_esquema(): array {
 			'regex'           => '/^[A-Za-z0-9_-]{20,100}$/D',
 			'extrair_content' => true,
 			'erro'            => __( 'O código de verificação do Google tem de 20 a 100 letras, números, hífen ou sublinhado.', 'rastro' ),
+		),
+		'facebook_verificacao'         => array(
+			'aba'             => 'verificacao',
+			'tipo'            => 'id',
+			'rotulo'          => __( 'Verificação de domínio da Meta (Facebook)', 'rastro' ),
+			'ajuda'           => __( 'No Gerenciador de Negócios da Meta: Configurações do negócio, Segurança da marca, Domínios, método da meta tag. Cole o valor de content da tag facebook-domain-verification (ou a tag inteira: só o valor é guardado). Deixe ligado depois de verificar: a Meta confere de novo de tempos em tempos. Vazio desliga.', 'rastro' ),
+			'padrao'          => '',
+			'regex'           => '/^[A-Za-z0-9]{20,64}$/D',
+			'extrair_content' => true,
+			'erro'            => __( 'O código de verificação da Meta tem de 20 a 64 letras ou números.', 'rastro' ),
 		),
 		'carregamento'                 => array(
 			'aba'    => 'geral',

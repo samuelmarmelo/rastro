@@ -220,6 +220,26 @@ nem da medição (sai para a equipe logada e mesmo sem nenhuma tag), e não sai
 em requisição restrita: painel, login, AJAX, REST, cron, feed, prévia,
 Personalizar e 404.
 
+## Verificações de domínio (aba Verificações)
+
+Aba própria no painel (`verificacao`, ordem 45, antes de Relatórios). Cada
+campo vira uma `<meta>` no `wp_head` (prioridade 1), com as mesmas regras
+da verificação do Google acima. Lista em `rastro_tags_verificacoes()`
+(campo => `name` da meta).
+
+| Campo | Meta | Valor aceito | Onde pegar |
+|---|---|---|---|
+| `google_verificacao` | `google-site-verification` | 20 a 100 letras, números, `-` ou `_` | Search Console, método tag HTML |
+| `facebook_verificacao` | `facebook-domain-verification` | 20 a 64 letras ou números | Gerenciador de Negócios da Meta: Configurações do negócio, Segurança da marca, Domínios, método meta tag |
+
+Todas aceitam a tag inteira colada (fica só o `content`). A Meta lista três
+métodos (registro TXT no DNS, arquivo HTML ou meta tag no `<head>` da página
+inicial) e confere de novo de tempos em tempos: o campo fica preenchido
+depois de verificar ([Verifying your Domain](https://developers.facebook.com/docs/sharing/domain-verification/verifying-your-domain),
+conferido em 2026-11-16). O nome da meta só aparece no Gerenciador de
+Negócios; o formato do valor (30 letras minúsculas e números nos casos
+vistos) não está publicado, por isso a regra aceita de 20 a 64.
+
 ## Avisos do painel (`rastro_admin_avisos`)
 
 - GTM ligado junto com GA4, Ads, Meta ou TikTok diretos: aviso de contar a

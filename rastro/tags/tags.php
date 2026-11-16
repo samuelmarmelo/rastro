@@ -271,6 +271,42 @@ function rastro_tags_regra_avisos( array $ativos, array $plugins, array $nomes )
 }
 
 /**
+ * Metas de verificação de domínio: campo do esquema => atributo `name` da
+ * meta (nomes conferidos na documentação de cada serviço; docs/TAGS.md,
+ * seção Verificações). Não são cookie nem script: não dependem de
+ * consentimento.
+ *
+ * @return array<string,string>
+ */
+function rastro_tags_verificacoes(): array {
+	return array(
+		'google_verificacao'   => 'google-site-verification',
+		'facebook_verificacao' => 'facebook-domain-verification',
+	);
+}
+
+/**
+ * Regra pura: HTML de uma meta de verificação ('' para campo desconhecido
+ * ou valor inválido). O valor passa de novo pela validação do esquema.
+ *
+ * @param string $chave Campo do esquema (rastro_tags_verificacoes()).
+ * @param mixed  $valor Valor guardado.
+ * @return string
+ */
+function rastro_tags_verificacao_html( string $chave, $valor ): string {
+	$nomes = rastro_tags_verificacoes();
+	if ( ! isset( $nomes[ $chave ] ) ) {
+		return '';
+	}
+	$limpo = rastro_tags_id( $chave, $valor );
+	if ( '' === $limpo ) {
+		return '';
+	}
+
+	return '<meta name="' . esc_attr( $nomes[ $chave ] ) . '" content="' . esc_attr( $limpo ) . '" />' . "\n";
+}
+
+/**
  * Regra pura: HTML da meta de verificação do Google ('' para valor
  * inválido). O valor passa de novo pela validação do esquema.
  *
@@ -283,7 +319,7 @@ function rastro_tags_meta_html( $valor ): string {
 		return '';
 	}
 
-	return '<meta name="google-site-verification" content="' . esc_attr( $limpo ) . '" />' . "\n";
+	return rastro_tags_verificacao_html( 'google_verificacao', $limpo );
 }
 
 /**
@@ -493,9 +529,10 @@ function rastro_google_verificacao(): string {
 }
 
 /**
- * wp_head: meta de verificação do Google nas páginas do site. Não depende
- * de consentimento nem da medição; fica fora do painel, do login e das
- * outras requisições restritas.
+ * wp_head: metas de verificação de domínio (Google, Meta e as outras de
+ * rastro_tags_verificacoes()) nas páginas do site. Não dependem de
+ * consentimento nem da medição; ficam fora do painel, do login e das outras
+ * requisições restritas.
  *
  * @return void
  */
@@ -505,6 +542,11 @@ function rastro_tags_meta_verificacao(): void {
 			return;
 		}
 		echo rastro_tags_meta_html( rastro_google_verificacao() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- valor validado e escapado em rastro_tags_meta_html().
+		foreach ( array_keys( rastro_tags_verificacoes() ) as $chave ) {
+			if ( 'google_verificacao' !== $chave ) {
+				echo rastro_tags_verificacao_html( $chave, rastro_config_campo( $chave ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- valor validado e escapado em rastro_tags_verificacao_html().
+			}
+		}
 	} catch ( \Throwable $erro ) {
 		do_action( 'rastro_falha', 'tags-verificacao', $erro );
 	}
