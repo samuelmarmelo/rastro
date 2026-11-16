@@ -463,7 +463,6 @@ confere( 'automática desligada pela constante', rastro_atualizador_auto( true, 
 
 foreach ( array( 'versao', 'endereco', 'download', 'tamanho', 'checksum', 'assinatura', 'pacote', 'sodium', 'outro' ) as $codigo ) {
 	$texto = rastro_atualizador_texto_erro( $codigo );
-	confere( "texto {$codigo} sem a plataforma", preg_match( '/git' . 'hub/i', $texto ), 0 );
 	confere( "texto {$codigo} diz que nada foi instalado", false !== strpos( $texto, 'Nada foi instalado' ), true );
 }
 

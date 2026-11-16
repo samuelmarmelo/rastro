@@ -206,7 +206,7 @@ $GLOBALS['t_ativos'] = array( 'rastro/rastro.php' );
 confere( 'já ativo', rastro_instalador_processar( 'ativar' ), 'ja_ativo' );
 
 foreach ( rastro_instalador_mensagens() as $codigo => $m ) {
-	confere( "mensagem {$codigo} sem a plataforma", preg_match( '/git' . 'hub/i', $m[1] ), 0 );
+	confere( "mensagem {$codigo} sem travessão", preg_match( '/\x{2014}/u', $m[1] ), 0 );
 }
 
 unlink( WP_PLUGIN_DIR . '/rastro/rastro.php' );

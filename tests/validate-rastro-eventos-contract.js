@@ -27,8 +27,6 @@ const PHP = R + 'loja/eventos.php';
 const JS = R + 'assets/js/eventos.js';
 // Travessão (U+2014) montado pelo código, para este arquivo não conter o caractere.
 const TRAVESSAO = new RegExp(String.fromCharCode(0x2014));
-// O nome da plataforma de código, montado em partes pelo mesmo motivo.
-const PLATAFORMA = new RegExp('Git' + 'Hub', 'i');
 
 // 1. Arquivos da frente (todos com fim de linha LF).
 const arquivos = [PHP, JS, 'tests/validate-rastro-eventos-contract.js', 'tests/php/rastro-eventos.test.php', 'docs/EVENTOS.md'];
@@ -37,7 +35,6 @@ for (const arquivo of arquivos) {
   const bruto = lerBruto(arquivo);
   semMatch(bruto, /\r/, `${arquivo} com fim de linha LF`);
   semMatch(bruto, TRAVESSAO, `${arquivo} sem travessão`);
-  semMatch(bruto, PLATAFORMA, `${arquivo} sem o nome da plataforma de código`);
 }
 const php = ler(PHP);
 const js = ler(JS);

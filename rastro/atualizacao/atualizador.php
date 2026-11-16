@@ -26,7 +26,7 @@
  * - `plugins_api`: modal "Ver detalhes" com as notas da versão escapadas.
  *
  * SafeWidget: toda falha vira WP_Error ou a oferta some; nunca erro fatal.
- * Textos da tela falam "servidor de atualizações". PHP 7.4.
+ * O Rastro é público: os textos da tela citam o GitHub. PHP 7.4.
  *
  * @package Rastro
  */
@@ -390,8 +390,8 @@ function rastro_atualizador_regra_pacote( string $hex, int $tamanho, array $rele
  */
 function rastro_atualizador_texto_erro( string $codigo ): string {
 	$textos = array(
-		'versao'     => __( 'A versão oferecida mudou ou não pôde ser conferida no servidor de atualizações. Nada foi instalado; tente de novo mais tarde.', 'rastro' ),
-		'endereco'   => __( 'O endereço do pacote não é o do servidor de atualizações do Rastro. Nada foi instalado.', 'rastro' ),
+		'versao'     => __( 'A versão oferecida mudou ou não pôde ser conferida no GitHub do Rastro. Nada foi instalado; tente de novo mais tarde.', 'rastro' ),
+		'endereco'   => __( 'O endereço do pacote não é o das versões publicadas do Rastro no GitHub. Nada foi instalado.', 'rastro' ),
 		'download'   => __( 'Não foi possível baixar o pacote do Rastro. Nada foi instalado.', 'rastro' ),
 		'tamanho'    => __( 'O pacote baixado não tem o tamanho publicado. Nada foi instalado.', 'rastro' ),
 		'checksum'   => __( 'O pacote baixado não confere com o checksum publicado. Nada foi instalado.', 'rastro' ),
@@ -901,7 +901,7 @@ function rastro_atualizador_detalhes( $resultado, $acao = '', $args = null ) {
 	$info->requires_php = '7.4';
 	$info->last_updated = ! empty( $release['ok'] ) ? $release['data'] : '';
 	$info->sections     = array(
-		'description' => '<p>' . esc_html__( 'Rastreamento, consentimento de cookies (LGPD) e relatórios de venda do WooCommerce por origem, com as tags fora do caminho crítico.', 'rastro' ) . '</p>',
+		'description' => '<p>' . esc_html__( 'Rastreamento, consentimento de cookies (LGPD) e relatórios de venda do WooCommerce por origem, com as tags fora do caminho crítico.', 'rastro' ) . '</p><p>' . esc_html__( 'Código aberto, versões assinadas:', 'rastro' ) . ' <a href="' . esc_url( RASTRO_ATUALIZADOR_PAGINA ) . '">github.com/samuelmarmelo/rastro</a></p>',
 		'changelog'   => '' !== $notas ? '<pre>' . esc_html( $notas ) . '</pre>' : '<p>' . esc_html__( 'Sem notas desta versão.', 'rastro' ) . '</p>',
 	);
 

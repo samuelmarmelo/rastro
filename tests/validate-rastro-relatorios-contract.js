@@ -23,7 +23,6 @@ const tem = (t, s, m) => assert.ok(t.includes(s), m || s);
 
 const R = 'rastro/';
 const TRAVESSAO = new RegExp(String.fromCharCode(0x2014));
-const PLATAFORMA = new RegExp('Git' + 'Hub', 'i');
 const HTML_CRU = new RegExp(['inner', 'HTML'].join('') + '|' + ['outer', 'HTML'].join('') + '|insertAdjacentHTML|document\\.write|\\beval\\(|new Function');
 
 // 1. Arquivos da frente.
@@ -42,7 +41,6 @@ for (const arquivo of arquivos) {
   semMatch(lerBruto(arquivo), /\r/, `${arquivo} com fim de linha LF`);
   const texto = ler(arquivo);
   semMatch(texto, TRAVESSAO, `${arquivo} sem travessão`);
-  semMatch(texto, PLATAFORMA, `${arquivo} sem o nome da plataforma de código`);
 }
 for (const arquivo of arquivos.filter((a) => a.startsWith(R))) {
   const texto = ler(arquivo);

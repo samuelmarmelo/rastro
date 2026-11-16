@@ -88,8 +88,8 @@ chamar o filtro `update_plugins_github.com` para este plugin.
 
 ## 4. Textos da tela
 
-Os textos falam "servidor de atualizações", nunca o nome da plataforma, e
-todos dizem "Nada foi instalado" quando recusam.
+O Rastro é público: os textos citam o GitHub e o modal "Ver detalhes"
+leva ao repositório. Todos dizem "Nada foi instalado" quando recusam.
 
 ## 5. Da cópia embutida para o plugin próprio
 

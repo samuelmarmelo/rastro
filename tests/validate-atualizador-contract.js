@@ -66,11 +66,10 @@ const temPhp = spawnSync('php', ['-v'], { encoding: 'utf8' }).status === 0;
   assert.ok(lista.length >= 1, 'pelo menos uma chave');
   for (const k of lista) assert.match(k, /^[0-9a-f]{64}$/);
 
-  // 6. Textos da tela sem a plataforma e sem travessão.
+  // 6. Textos da tela sem travessão.
   const traducoes = fonte.match(/\b(?:__|esc_html__|esc_attr__)\(\s*'(?:[^'\\]|\\.)*'/g) || [];
   assert.ok(traducoes.length >= 9, 'textos traduzíveis');
   for (const t of traducoes) {
-    semMatch(t, new RegExp('Git' + 'Hub', 'i'), `texto sem a plataforma: ${t}`);
     semMatch(t, new RegExp(String.fromCharCode(0x2014)), `texto sem travessão: ${t}`);
   }
   semMatch(fonte, /\beval\(|base64_decode\(|\$_REQUEST\b|delete_option\(/, 'sem eval, base64_decode, $_REQUEST e delete_option');
@@ -114,7 +113,7 @@ const temPhp = spawnSync('php', ['-v'], { encoding: 'utf8' }).status === 0;
   tem(inst, 'rastro_atualizador_preparar_pasta( $source, $remote_source, $esperada )', 'mesma conferência da pasta');
   semMatch(inst, /\bwp_(?:safe_)?remote_|download_url\(/, 'instalador não baixa nada por conta própria');
   for (const t of inst.match(/\b(?:__|esc_html__|esc_attr__)\(\s*'(?:[^'\\]|\\.)*'/g) || []) {
-    semMatch(t, new RegExp('Git' + 'Hub', 'i'), `texto do instalador sem a plataforma: ${t}`);
+    semMatch(t, new RegExp(String.fromCharCode(0x2014)), `texto do instalador sem travessão: ${t}`);
   }
   if (temPhp) {
     const l = spawnSync('php', ['-l', I], { cwd: root, encoding: 'utf8' });

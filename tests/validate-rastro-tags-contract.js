@@ -24,9 +24,8 @@ const j = (v) => JSON.parse(JSON.stringify(v === undefined ? null : v));
 const args = (a) => j(Array.from(a));
 
 const R = 'rastro/';
-// Travessão (U+2014) e nome da plataforma de código montados pelo código.
+// Travessão (U+2014) montado pelo código.
 const TRAVESSAO = new RegExp(String.fromCharCode(0x2014));
-const PLATAFORMA = new RegExp('Git' + 'Hub', 'i');
 
 /* 1. Arquivos da frente ------------------------------------------------------ */
 
@@ -42,7 +41,6 @@ for (const arquivo of arquivosT3) {
   const bruto = lerBruto(arquivo);
   semMatch(bruto, /\r/, `${arquivo} com fim de linha LF`);
   semMatch(bruto, TRAVESSAO, `${arquivo} sem travessão`);
-  semMatch(bruto, PLATAFORMA, `${arquivo} sem o nome da plataforma de código`);
 }
 for (const arquivo of [R + 'tags/tags.php', R + 'assets/js/tags.js']) {
   const texto = ler(arquivo);

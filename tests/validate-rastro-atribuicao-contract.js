@@ -24,7 +24,6 @@ const tem = (t, s, m) => assert.ok(t.includes(s), m || s);
 
 const R = 'rastro/';
 const TRAVESSAO = new RegExp(String.fromCharCode(0x2014));
-const PLATAFORMA = new RegExp('Git' + 'Hub', 'i');
 
 // 1. Arquivos da frente.
 const arquivos = [
@@ -40,7 +39,6 @@ for (const arquivo of arquivos) {
   const bruto = lerBruto(arquivo);
   semMatch(bruto, /\r/, `${arquivo} com fim de linha LF`);
   semMatch(bruto, TRAVESSAO, `${arquivo} sem travessão`);
-  semMatch(bruto, PLATAFORMA, `${arquivo} sem o nome da plataforma de código`);
 }
 for (const arquivo of arquivos.slice(0, 3)) {
   const texto = ler(arquivo);
