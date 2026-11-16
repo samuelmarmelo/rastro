@@ -63,6 +63,9 @@ assert.equal((servicos.match(/\[Privacy Policy\]\(https:\/\//g) || []).length, 5
     assert.ok(arquivos[modulo], `módulo no pacote: ${modulo}`);
   }
 
+  // CRC-32 de referência (o zip usa o do Node ou a tabela padrão).
+  assert.equal(w.crc32(Buffer.from('123456789')), 0xcbf43926, 'CRC-32 de referência');
+
   // Zip legível: diretório central, nomes e conteúdo inflado igual.
   const amostra = { 'rastro/a.txt': Buffer.from('olá, rastro\n'), 'rastro/b/c.php': Buffer.from('<?php echo 1;\n') };
   const zip = w.montarZip(amostra);

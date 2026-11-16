@@ -23,7 +23,26 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deflateRawSync, crc32 } from 'node:zlib';
+import * as zlib from 'node:zlib';
+
+const { deflateRawSync } = zlib;
+
+/** CRC-32 do zip: o do Node quando existe (22.2+), senão a tabela padrão. */
+let TABELA = null;
+export function crc32(buf) {
+  if (typeof zlib.crc32 === 'function') return zlib.crc32(buf) >>> 0;
+  if (!TABELA) {
+    TABELA = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      TABELA[n] = c >>> 0;
+    }
+  }
+  let crc = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) crc = TABELA[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -135,7 +154,7 @@ function git(args, binario = false) {
 
 /** Monta os arquivos do pacote a partir de um commit. */
 export function montar(ref = 'HEAD') {
-  const lista = git(['ls-tree', '-r', '--name-only', ref, '--', 'rastro/']).split('\n').filter(Boolean);
+  const lista = git(['ls-tree', '-r', '-z', '--name-only', ref, '--', 'rastro/']).split('\0').filter(Boolean);
   const arquivos = {};
   for (const nome of lista) {
     if (foraDoWporg(nome)) continue;
@@ -179,6 +198,10 @@ function principal() {
   }
   if (!process.argv.includes('--sem-zip')) {
     const zip = join(saida, `rastro-wporg-v${versao}.zip`);
+    if (existsSync(zip)) {
+      console.error(`wporg: ${relative(raiz, zip)} já existe; use outra --saida (nada é apagado)`);
+      process.exit(1);
+    }
     writeFileSync(zip, montarZip(arquivos));
     console.log(`wporg: ${Object.keys(arquivos).length} arquivos, ${relative(raiz, zip)}`);
   } else {
