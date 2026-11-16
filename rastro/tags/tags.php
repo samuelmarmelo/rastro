@@ -280,8 +280,9 @@ function rastro_tags_regra_avisos( array $ativos, array $plugins, array $nomes )
  */
 function rastro_tags_verificacoes(): array {
 	return array(
-		'google_verificacao'   => 'google-site-verification',
-		'facebook_verificacao' => 'facebook-domain-verification',
+		'google_verificacao'    => 'google-site-verification',
+		'facebook_verificacao'  => 'facebook-domain-verification',
+		'pinterest_verificacao' => 'p:domain_verify',
 	);
 }
 

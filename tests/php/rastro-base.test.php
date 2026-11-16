@@ -178,7 +178,7 @@ confere( 'RASTRO_LOCAL liga a medição numa cópia local', $c['local'] ?? null,
 novo();
 $esquema = rastro_config_esquema();
 $eventos = array( 'view_item_list', 'view_item', 'add_to_cart', 'remove_from_cart', 'view_cart', 'begin_checkout', 'add_payment_info', 'purchase', 'search' );
-$chaves  = array( 'gtm', 'ga4', 'ads', 'ads_rotulo_compra', 'meta', 'meta_cabecalho', 'tiktok', 'openai', 'openai_debug', 'posthog', 'posthog_regiao', 'posthog_logs', 'posthog_logs_console', 'google_verificacao', 'facebook_verificacao', 'carregamento', 'eventos_loja' );
+$chaves  = array( 'gtm', 'ga4', 'ads', 'ads_rotulo_compra', 'meta', 'meta_cabecalho', 'tiktok', 'openai', 'openai_debug', 'posthog', 'posthog_regiao', 'posthog_logs', 'posthog_logs_console', 'google_verificacao', 'facebook_verificacao', 'pinterest_verificacao', 'carregamento', 'eventos_loja' );
 foreach ( $eventos as $evento ) {
 	$chaves[] = 'evento_' . $evento;
 }

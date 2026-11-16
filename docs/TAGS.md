@@ -230,6 +230,7 @@ da verificação do Google acima. Lista em `rastro_tags_verificacoes()`
 | Campo | Meta | Valor aceito | Onde pegar |
 |---|---|---|---|
 | `google_verificacao` | `google-site-verification` | 20 a 100 letras, números, `-` ou `_` | Search Console, método tag HTML |
+| `pinterest_verificacao` | `p:domain_verify` | 20 a 64 letras ou números | Pinterest: Configurações, Contas reivindicadas, Sites, Reivindicar, tag HTML |
 | `facebook_verificacao` | `facebook-domain-verification` | 20 a 64 letras ou números | Gerenciador de Negócios da Meta: Configurações do negócio, Segurança da marca, Domínios, método meta tag |
 
 Todas aceitam a tag inteira colada (fica só o `content`). A Meta lista três
@@ -239,6 +240,14 @@ depois de verificar ([Verifying your Domain](https://developers.facebook.com/doc
 conferido em 2026-11-16). O nome da meta só aparece no Gerenciador de
 Negócios; o formato do valor (30 letras minúsculas e números nos casos
 vistos) não está publicado, por isso a regra aceita de 20 a 64.
+
+Pinterest: a ajuda oficial lista quatro métodos (Google Merchant Center,
+tag HTML, arquivo HTML ou registro TXT no DNS) e mostra a tag só na conta
+([Claim your website](https://help.pinterest.com/en/business/article/claim-your-website),
+conferido em 2026-11-16); a especificação oficial da API v5 tem o método
+`METATAG`. O nome `p:domain_verify` e o valor (32 caracteres hexadecimais nos
+casos vistos) vêm da tag que o Pinterest entrega; a regra aceita de 20 a 64
+letras ou números.
 
 ## Avisos do painel (`rastro_admin_avisos`)
 

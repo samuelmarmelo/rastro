@@ -485,6 +485,11 @@ confere( 'Meta: valor inválido não sai', false !== strpos( $head, 'facebook-do
 com_config( array( 'facebook_verificacao' => 'abc123def456ghi789jkl012mno345' ), array( 'admin' => true ) );
 $head = rastro_teste_saida( 'do_action', array( 'wp_head' ) );
 confere( 'Meta: nada no painel', false !== strpos( $head, 'facebook-domain-verification' ), false );
+com_config( array( 'pinterest_verificacao' => '<meta name="p:domain_verify" content="0123456789abcdef0123456789abcdef"/>' ), array( 'uri' => '/', 'woo' => array() ) );
+$head = rastro_teste_saida( 'do_action', array( 'wp_head' ) );
+confere( 'Pinterest: meta de verificação com o valor colado', false !== strpos( $head, '<meta name="p:domain_verify" content="0123456789abcdef0123456789abcdef" />' ), true );
+com_config( array( 'pinterest_verificacao' => 'curto' ) );
+confere( 'Pinterest: valor curto vira vazio', rastro_config()['pinterest_verificacao'], '' );
 confere( 'regra: campo desconhecido não gera meta', rastro_tags_verificacao_html( 'gtm', 'GTM-ABC1234' ), '' );
 
 confere( 'nenhuma falha registrada', $falhas_registradas, array() );
