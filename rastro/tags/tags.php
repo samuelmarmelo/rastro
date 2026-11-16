@@ -136,6 +136,13 @@ function rastro_tags_navegador_destino( string $destino, string $id, array $conf
 				'debug' => isset( $config['openai_debug'] ) && '1' === $config['openai_debug'],
 			);
 
+		case 'meta':
+			$cabecalho = rastro_tags_meta_tipo( $config, $privada );
+			return '' === $cabecalho ? array( 'id' => $id ) : array(
+				'id'        => $id,
+				'cabecalho' => $cabecalho,
+			);
+
 		case 'posthog':
 			$regiao  = isset( $config['posthog_regiao'] ) && 'eu' === $config['posthog_regiao'] ? 'eu' : 'us';
 			$opcoes  = array(
@@ -291,6 +298,74 @@ function rastro_tags_meta_html( $valor ): string {
  */
 function rastro_tags_meta_referrer_html( bool $privada, bool $tem_destino ): string {
 	return $privada && $tem_destino ? '<meta name="referrer" content="strict-origin" />' . "\n" : '';
+}
+
+/**
+ * Regra pura: como o código base do Meta Pixel vai no <head> (contrato,
+ * seção 5.1; docs/TAGS.md). '' = não vai (campo desligado); 'fila' = só a
+ * fila fbq oficial, sem pedido à Meta (o fbevents.js carrega pelo tags.js
+ * depois do aceite); 'completo' = o código oficial inteiro, com o
+ * fbevents.js, só no modo básico (sem consentimento a pedir) e em página
+ * pública (a página privada espera o tags.js sanear o endereço).
+ *
+ * @param array $config  Configuração do Rastro.
+ * @param bool  $privada Página privada?
+ * @return string '', 'fila' ou 'completo'.
+ */
+function rastro_tags_meta_tipo( array $config, bool $privada ): string {
+	if ( ! isset( $config['meta_cabecalho'] ) || '1' !== $config['meta_cabecalho'] ) {
+		return '';
+	}
+
+	return ! $privada && isset( $config['modo'] ) && 'basico' === $config['modo'] ? 'completo' : 'fila';
+}
+
+/**
+ * Regra pura: o JavaScript do código base do Meta Pixel para o <head>
+ * (trecho oficial da Meta, conferido em 2026-11-16 em
+ * developers.facebook.com/docs/meta-pixel/get-started). Na `fila`, o mesmo
+ * trecho sem a inserção do fbevents.js. Sem configuração automática
+ * (autoConfig desligado, antes do init), como o tags.js já fazia.
+ *
+ * @param string $id   ID do Meta Pixel (validado de novo aqui).
+ * @param string $tipo fila ou completo.
+ * @return string '' para ID ou tipo inválido.
+ */
+function rastro_tags_meta_cabecalho_js( string $id, string $tipo ): string {
+	$id = rastro_tags_id( 'meta', $id );
+	if ( '' === $id || ! in_array( $tipo, array( 'fila', 'completo' ), true ) ) {
+		return '';
+	}
+
+	$fila = "n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];";
+	if ( 'completo' === $tipo ) {
+		$js = '!function(f,b,e,v,n,t,s){if(f.fbq)return;' . $fila . "t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');";
+	} else {
+		$js = '!function(f,n){if(f.fbq)return;' . $fila . '}(window);';
+	}
+	$json = rastro_json( $id );
+
+	return $js . "fbq('set','autoConfig',false," . $json . ");fbq('init'," . $json . ");fbq('track','PageView');";
+}
+
+/**
+ * Regra pura: o <noscript> oficial do Meta Pixel (imagem de 1 pixel com o
+ * PageView), só com o código `completo` (modo básico, página pública): sem
+ * JavaScript não há como pedir consentimento, então nos outros modos ele
+ * nunca sai.
+ *
+ * @param string $id   ID do Meta Pixel.
+ * @param string $tipo Saída de rastro_tags_meta_tipo().
+ * @return string
+ */
+function rastro_tags_meta_noscript_html( string $id, string $tipo ): string {
+	$id = rastro_tags_id( 'meta', $id );
+	if ( '' === $id || 'completo' !== $tipo ) {
+		return '';
+	}
+	$src = 'https://www.facebook.com/tr?id=' . rawurlencode( $id ) . '&ev=PageView&noscript=1';
+
+	return '<noscript><img height="1" width="1" style="display:none" alt="" src="' . esc_url( $src ) . '" /></noscript>' . "\n";
 }
 
 /* Leitura ------------------------------------------------------------------ */
@@ -455,6 +530,69 @@ function rastro_tags_meta_referrer(): void {
 	}
 }
 add_action( 'wp_head', 'rastro_tags_meta_referrer', 1 );
+
+/* Meta Pixel no cabeçalho e no rodapé ------------------------------------------ */
+
+/**
+ * O destino Meta desta página quando ele vai pelo cabeçalho: ID e tipo
+ * (fila ou completo), ou null. Só quando a página mede e o tags.js está na
+ * página (é ele quem carrega o fbevents.js depois do aceite e entrega os
+ * eventos).
+ *
+ * @return array{id:string,tipo:string}|null
+ */
+function rastro_tags_meta_cabecalho_destino(): ?array {
+	if ( rastro_requisicao_restrita() || ! rastro_deve_medir() || ! function_exists( 'wp_script_is' ) || ! wp_script_is( 'rastro-tags', 'enqueued' ) ) {
+		return null;
+	}
+	$destinos = rastro_destinos();
+	$meta     = isset( $destinos['meta'] ) ? $destinos['meta'] : array();
+	if ( empty( $meta['ativo'] ) || empty( $meta['navegador']['cabecalho'] ) ) {
+		return null;
+	}
+
+	return array(
+		'id'   => (string) $meta['id'],
+		'tipo' => (string) $meta['navegador']['cabecalho'],
+	);
+}
+
+/**
+ * wp_head (prioridade 3, depois da fila de consentimento): código base do
+ * Meta Pixel. Na fila, nenhum pedido sai para a Meta antes do aceite.
+ *
+ * @return void
+ */
+function rastro_tags_meta_cabecalho(): void {
+	try {
+		$meta = rastro_tags_meta_cabecalho_destino();
+		if ( null === $meta ) {
+			return;
+		}
+		rastro_script_inline( 'rastro-meta-pixel', rastro_tags_meta_cabecalho_js( $meta['id'], $meta['tipo'] ) );
+	} catch ( \Throwable $erro ) {
+		do_action( 'rastro_falha', 'tags-meta-cabecalho', $erro );
+	}
+}
+add_action( 'wp_head', 'rastro_tags_meta_cabecalho', 3 );
+
+/**
+ * wp_footer: o <noscript> do Meta Pixel (só com o código completo).
+ *
+ * @return void
+ */
+function rastro_tags_meta_rodape(): void {
+	try {
+		$meta = rastro_tags_meta_cabecalho_destino();
+		if ( null === $meta ) {
+			return;
+		}
+		echo rastro_tags_meta_noscript_html( $meta['id'], $meta['tipo'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- ID validado e endereço por esc_url().
+	} catch ( \Throwable $erro ) {
+		do_action( 'rastro_falha', 'tags-meta-rodape', $erro );
+	}
+}
+add_action( 'wp_footer', 'rastro_tags_meta_rodape', 20 );
 
 /* Avisos do painel -------------------------------------------------------------- */
 

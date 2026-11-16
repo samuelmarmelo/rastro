@@ -143,6 +143,14 @@ function rastro_config_esquema(): array {
 			'numeros' => true,
 			'erro'    => __( 'O ID do Meta Pixel tem só números (de 8 a 20).', 'rastro' ),
 		),
+		'meta_cabecalho'               => array(
+			'aba'    => 'geral',
+			'tipo'   => 'booleano',
+			'rotulo' => __( 'Código base do Meta Pixel no cabeçalho', 'rastro' ),
+			'marca'  => __( 'Pôr o código base do Meta Pixel no <head> e o <noscript> no rodapé, como a Meta pede', 'rastro' ),
+			'ajuda'  => __( 'Com consentimento (LGPD), o <head> leva só a fila fbq, sem nenhum pedido à Meta, e o fbevents.js carrega depois do aceite. No modo básico, o código oficial completo vai no <head> e o <noscript> no rodapé. Páginas privadas nunca carregam o pixel pelo cabeçalho.', 'rastro' ),
+			'padrao' => '1',
+		),
 		'tiktok'                       => array(
 			'aba'        => 'geral',
 			'tipo'       => 'id',

@@ -89,6 +89,31 @@ Meta (configurações do pixel) e no Gerenciador de Eventos do TikTok
 (configurações do pixel). O `autoConfig` desligado só tira os cliques e os
 metadados da página.
 
+### Meta Pixel no cabeçalho (`meta_cabecalho`, padrão ligado)
+
+A Meta pede o código base entre `<head>` e `</head>` de toda página
+([Get Started](https://developers.facebook.com/docs/meta-pixel/get-started),
+conferido em 2026-11-16) e o `<noscript>` com a imagem do PageView. O
+Rastro segue esse desenho sem quebrar a regra "nada de terceiro antes do
+aceite":
+
+| Situação | `<head>` (`wp_head`, prioridade 3, `script#rastro-meta-pixel`) | Rodapé (`wp_footer`) | `tags.js` |
+|---|---|---|---|
+| Modo com consentimento (`lgpd`, `aceite_automatico`) | a fila `fbq` oficial sem a inserção do `fbevents.js`, com `autoConfig` desligado, `init` e `PageView`. Nenhum pedido à Meta | nada (sem JavaScript não há como pedir consentimento) | depois do aceite de publicidade, insere o `fbevents.js` (a fila do `<head>` é processada) e não repete `init` nem `PageView` |
+| Modo `basico`, página pública | o código oficial completo, com o `fbevents.js` assíncrono | `<noscript><img ... facebook.com/tr?id=ID&ev=PageView&noscript=1></noscript>` | marca a Meta como carregada e só entrega eventos |
+| Qualquer modo, página privada | só a fila (o `tags.js` saneia o endereço antes de carregar, D4) | nada | igual à primeira linha |
+| Campo desligado, equipe, cópia local, destino desligado pela ponte | nada | nada | carrega como antes |
+
+- O `<noscript>` vai no rodapé: dentro do `<head>`, o HTML só aceita `link`,
+  `style` e `meta` no `<noscript>`; a documentação avançada da Meta aceita
+  "no head ou no body".
+- Se um otimizador tirar o script do `<head>`, o `tags.js` não acha a fila
+  e carrega do jeito antigo (fila, `init` e `PageView` próprios).
+- A revogação segue igual: `fbq('consent', 'revoke')` e recarga.
+- Consent API da Meta: `revoke` antes do `init` só pausa o envio; o
+  `fbevents.js` ainda baixaria. Por isso o Rastro nem insere o script antes
+  do aceite, e a fila não precisa de `revoke`.
+
 ### Filtro `rastro_destinos`
 
 Recebe a lista inteira. Só `ativo` e `id` valem: o ID passa de novo pela

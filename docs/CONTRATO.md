@@ -28,7 +28,10 @@
    `document` `rastro:*`, text domain `rastro`. PHP 7.4. JS puro, sem
    biblioteca, sem etapa de build, sem CDN.
 4. **Nada de terceiro antes do aceite.** O `<head>` leva só a fila
-   (`dataLayer`, `gtag`, Consent Mode v2 negado) e a configuração. Os
+   (`dataLayer`, `gtag`, Consent Mode v2 negado, a fila `fbq` do Meta Pixel
+   sem o `fbevents.js`, seção 5.1) e a configuração. Exceção: no modo
+   `basico` (sem consentimento a pedir), o código base oficial da Meta vai
+   completo no `<head>` das páginas públicas. Os
    carregadores de terceiros só rodam com o consentimento da finalidade
    certa (análise ou publicidade), e fora do caminho crítico (seção 5).
 5. **Sem dado pessoal.** Nenhum nome, e-mail, CPF, telefone, endereço, ID de
@@ -147,6 +150,7 @@ rótulo, ajuda, padrão e regra. A tela, o salvar e a leitura saem dele.
 | `ads` | geral | `^AW-[0-9]{6,14}$` | `''` |
 | `ads_rotulo_compra` | geral | `^[A-Za-z0-9_-]{6,40}$` (rótulo da conversão de compra) | `''` |
 | `meta` | geral | `^[0-9]{8,20}$` | `''` |
+| `meta_cabecalho` | geral | `1` ou `0` (código base do Meta Pixel no `<head>`, seção 5.1) | `1` |
 | `tiktok` | geral | `^[A-Z0-9]{15,30}$` (maiúsculas) | `''` |
 | `openai` | geral | `^[A-Za-z0-9_-]{10,64}$` | `''` |
 | `openai_debug` | geral | `1` ou `0` | `0` |
@@ -354,6 +358,17 @@ painel avisa do risco de contar duas vezes. Com PixelYourSite, WooCommerce
 Google Analytics Integration, Site Kit ou outro plugin de medição ativo, o
 painel avisa (`rastro_admin_avisos`). O Rastro não desativa plugin de
 ninguém.
+
+### 5.1 Meta Pixel no cabeçalho
+
+Com `meta_cabecalho` ligado e o destino Meta ativo na página que mede: no
+`wp_head` (prioridade 3) a fila `fbq` oficial com `autoConfig` desligado,
+`init` e `PageView`, sem inserir o `fbevents.js`; o `tags.js` insere o
+script só depois do aceite de publicidade (`cabecalho: 'fila'` na
+configuração do navegador). No modo `basico` e em página pública, o código
+oficial completo (`cabecalho: 'completo'`) e o `<noscript>` com a imagem
+do PageView no `wp_footer`. Página privada nunca leva o completo. Manual:
+`docs/TAGS.md`.
 
 **Verificação do Google:** `<meta name="google-site-verification">` no
 `wp_head` de toda página pública, com o valor validado e `esc_attr`. Não
