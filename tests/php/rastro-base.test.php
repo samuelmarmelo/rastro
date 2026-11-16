@@ -127,6 +127,7 @@ confere(
 		'atualizacao/chaves.php',
 		'atualizacao/atualizador.php',
 		'admin/admin.php',
+		'atualizacao/instalador.php',
 	)
 );
 novo();

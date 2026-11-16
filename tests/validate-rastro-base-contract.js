@@ -139,7 +139,7 @@ assert.deepEqual(modulos, [
   'atribuicao/atribuicao.php', 'atribuicao/pedido.php',
   'relatorios/dados.php', 'relatorios/relatorios.php',
   'atualizacao/chaves.php', 'atualizacao/atualizador.php',
-  'admin/admin.php',
+  'admin/admin.php', 'atualizacao/instalador.php',
 ], 'lista completa de módulos, na ordem do contrato');
 comMatch(lista, /if \( is_admin\(\) \) \{\n\t+\$modulos\[\] = 'admin\/admin\.php';/, 'painel só no painel');
 const carregarArquivo = plugin.slice(plugin.indexOf('function rastro_carregar_arquivo'), plugin.indexOf('function rastro_carregar()'));

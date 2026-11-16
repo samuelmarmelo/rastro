@@ -101,7 +101,29 @@ const temPhp = spawnSync('php', ['-v'], { encoding: 'utf8' }).status === 0;
     assert.equal(cruz.stdout.trim(), 'msg-igual ok recusou-outra', `conferência cruzada: ${cruz.stdout}${cruz.stderr}`);
   }
 
-  // 8. Documentação.
+  // 8. Instalador do plugin próprio: só na cópia embutida, só no painel, só com clique.
+  const I = 'rastro/atualizacao/instalador.php';
+  const inst = ler(I);
+  tem(plugin, "$modulos[] = 'admin/admin.php';\n\t\t\t$modulos[] = 'atualizacao/instalador.php';", 'instalador só no painel');
+  tem(inst, "if ( ! function_exists( 'rastro_atualizador_plugin_proprio' ) || rastro_atualizador_plugin_proprio() ) {\n\treturn;\n}", 'instalador parado no plugin próprio');
+  assert.deepEqual(inst.match(/add_(?:action|filter)\( '[^']+'/g), ["add_filter( 'upgrader_source_selection'", "add_action( 'admin_notices'", "add_action( 'network_admin_notices'", "add_action( 'admin_post_'"], 'só aviso, admin-post e a conferência temporária da pasta');
+  tem(inst, 'check_admin_referer( RASTRO_INSTALADOR_ACAO );', 'nonce no clique');
+  tem(inst, "current_user_can( 'install_plugins' )", 'capacidade de instalar');
+  tem(inst, "current_user_can( 'activate_plugins' )", 'capacidade de ativar');
+  tem(inst, 'rastro_atualizador_baixar_conferido( $release )', 'mesmo download conferido do atualizador');
+  tem(inst, 'rastro_atualizador_preparar_pasta( $source, $remote_source, $esperada )', 'mesma conferência da pasta');
+  semMatch(inst, /\bwp_(?:safe_)?remote_|download_url\(/, 'instalador não baixa nada por conta própria');
+  for (const t of inst.match(/\b(?:__|esc_html__|esc_attr__)\(\s*'(?:[^'\\]|\\.)*'/g) || []) {
+    semMatch(t, new RegExp('Git' + 'Hub', 'i'), `texto do instalador sem a plataforma: ${t}`);
+  }
+  if (temPhp) {
+    const l = spawnSync('php', ['-l', I], { cwd: root, encoding: 'utf8' });
+    assert.equal(l.status, 0, `php -l ${I}`);
+    const t = spawnSync('php', ['tests/php/instalador.test.php'], { cwd: root, encoding: 'utf8' });
+    assert.equal(t.status, 0, `tests/php/instalador.test.php\n${t.stdout}\n${t.stderr}`);
+  }
+
+  // 9. Documentação.
   const doc = ler('docs/ATUALIZADOR.md');
   for (const t of ['RASTRO_ATUALIZAR_AUTO', '#rastro-assinado', 'githubusercontent.com', 'upgrader_source_selection', 'cópia embutida', 'Update URI']) tem(doc, t, `ATUALIZADOR.md: ${t}`);
 
