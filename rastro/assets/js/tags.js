@@ -366,9 +366,24 @@
 		} catch ( e ) {}
 	}
 
+	// Mesmas máscaras dos logs do servidor (logs/logs.php): e-mail, CPF,
+	// telefone, número de pedido, trecho numérico de caminho e números longos.
+	function mascarar( t ) {
+		return String( t )
+			.replace( /%40/gi, '@' )
+			.replace( /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '[e-mail]' )
+			.replace( /\b\d{3}[.\s]?\d{3}[.\s]?\d{3}[\s.-]?\d{2}\b/g, '[cpf]' )
+			.replace( /\(?\b\d{2}\)?\s?9?\s?\d{4}[\s.-]?\d{4}\b/g, '[telefone]' )
+			.replace( /\b(pedidos?|orders?|encomendas?)(\s*(?:n[º°o.]?|#|id|número|numero)?\s*[:#]?\s*)\d+/gi, '$1$2[número]' )
+			.replace( /#\d{3,}\b/g, '#[número]' )
+			.replace( /\/\d+(?=[\/?#\s]|$)/g, '/:id' )
+			.replace( /\d{8,}/g, '[número]' );
+	}
+
 	// window.rastro.log( nivel, mensagem, atributos ): log no PostHog Logs. Só
 	// com os logs ligados; antes do PostHog carregar, fica numa fila curta na
-	// memória (descartada sem aceite). Atributos só com valores simples.
+	// memória (descartada sem aceite). Atributos só com valores simples. Texto
+	// mascarado (sem e-mail, CPF, telefone nem números longos).
 	function registrarLog( nivel, mensagem, atributos ) {
 		if ( parado || ! logsLigados() || 'string' !== typeof mensagem || '' === mensagem ) {
 			return false;
@@ -379,14 +394,14 @@
 				if ( Object.prototype.hasOwnProperty.call( atributos, k ) && /^[A-Za-z0-9_.-]{1,64}$/.test( k ) ) {
 					var v = atributos[ k ];
 					if ( 'string' === typeof v ) {
-						attrs[ k ] = semConsulta( v ).slice( 0, 500 );
+						attrs[ k ] = mascarar( semConsulta( v ) ).slice( 0, 500 );
 					} else if ( 'number' === typeof v || 'boolean' === typeof v ) {
 						attrs[ k ] = v;
 					}
 				}
 			}
 		}
-		var item = { body: mensagem.slice( 0, 2000 ), level: de( NIVEIS_LOG, nivel ) ? nivel : 'info', attributes: attrs };
+		var item = { body: mascarar( mensagem ).slice( 0, 2000 ), level: de( NIVEIS_LOG, nivel ) ? nivel : 'info', attributes: attrs };
 		if ( carregados.posthog ) {
 			entregarLog( item );
 			return true;
