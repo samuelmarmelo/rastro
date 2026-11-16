@@ -145,7 +145,7 @@ confere(
 			'logs'              => array(
 				'serviceName'        => 'rastro',
 				'environment'        => 'production',
-				'serviceVersion'     => '1.0.0',
+				'serviceVersion'     => RASTRO_VERSAO,
 				'captureConsoleLogs' => false,
 			),
 		),
