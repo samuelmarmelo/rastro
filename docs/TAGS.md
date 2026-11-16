@@ -177,7 +177,7 @@ sem aceite ou parado).
 | GA4 | `gtag('event', nome, { ...params, send_to: G-ID })`, todos os eventos |
 | Ads | `gtag('event', nome, { ...params, send_to: AW-ID })` para `view_item_list`, `view_item`, `add_to_cart`, `begin_checkout`, `purchase`, `search`; na compra, com rótulo, também `gtag('event', 'conversion', { send_to: 'AW-ID/rótulo', value, currency, transaction_id })` |
 | Meta | `ViewContent`, `AddToCart`, `InitiateCheckout` (com `num_items`), `AddPaymentInfo`, `Purchase`, `Search` (`search_string`); dados `value`, `currency`, `content_type: 'product'`, `content_ids`, `contents` (`id`, `quantity`) |
-| TikTok | `ViewContent`, `AddToCart`, `InitiateCheckout`, `AddPaymentInfo`, `Purchase`, `Search`; dados `value`, `currency`, `content_type`, `contents` (`content_id`, `content_type`, `content_name`, `quantity`, `price`), `search_string` |
+| TikTok | `ViewContent`, `AddToCart`, `InitiateCheckout`, `AddPaymentInfo`, `Purchase`, `Search`; dados `value`, `currency`, `content_type`, `content_ids`, `contents` (`content_id`, `content_type`, `content_name`, `quantity`, `price`), `search_string` |
 | PostHog | mesmo nome, só `value`, `currency` e `quantidade_itens` |
 | OpenAI | nenhum evento da loja (só `page_viewed` na carga) |
 
@@ -193,7 +193,9 @@ só para GTM, GA4 e PostHog.
 - `parar()`: para tudo nesta página (agenda cancelada, fila apagada, eventos
   recusados, nada carrega de novo), `posthog.opt_out_capturing()`,
   `oaiq('consent', false)` e `fbq('consent', 'revoke')` quando carregados.
-  TikTok: nada (ver "Não conferido"); a recarga da página resolve.
+  TikTok: `ttq.revokeConsent()` quando carregado (Cookie Consent Mode
+  oficial: para de compartilhar, inclusive o que estava na fila); a recarga
+  da página completa.
 
 Cada carregador e cada entrega rodam num `try/catch`: um destino com erro não
 conta como carregado e não derruba os outros.
@@ -248,6 +250,33 @@ conferido em 2026-11-16); a especificação oficial da API v5 tem o método
 `METATAG`. O nome `p:domain_verify` e o valor (32 caracteres hexadecimais nos
 casos vistos) vêm da tag que o Pinterest entrega; a regra aceita de 20 a 64
 letras ou números.
+
+### Arquivo de verificação (TikTok e outros)
+
+Campos `arquivo_verificacao_nome` (até 100 letras, números, `-` ou `_`,
+terminando em `.txt`) e `arquivo_verificacao_conteudo` (letras, números e
+`= : . _ -`, até 300). Com os dois preenchidos, `GET` ou `HEAD` em
+`<página inicial>/<nome>` responde o conteúdo como `text/plain; charset=utf-8`
+com `X-Content-Type-Options: nosniff` (módulo `verificacao/arquivo.php`, no
+`parse_request`, prioridade 0). Nada é gravado em disco; o painel, outros
+métodos e outros endereços seguem normais. Serve para o arquivo de
+assinatura do TikTok for Developers e para qualquer serviço que peça um
+`.txt` simples na raiz. O registro TXT no DNS fica com quem administra o
+domínio.
+
+## TikTok Pixel no cabeçalho (`tiktok_cabecalho`, padrão ligado)
+
+O TikTok pede o código base no topo do `<head>`. O trecho oficial chama
+`ttq.load()`, que baixa o `events.js` na hora, mesmo com `holdConsent()`.
+Então:
+
+- Modo `basico`, página pública: o código oficial completo no `wp_head`
+  (prioridade 3, `script#rastro-tiktok-pixel`) com `ttq.load(ID)` e
+  `ttq.page()`; o `tags.js` recebe `cabecalho: 'completo'` e não carrega de
+  novo (só entrega os eventos).
+- Com consentimento (`lgpd`, `aceite_automatico`) ou em página privada:
+  nada no `<head>`; o `tags.js` carrega depois do aceite de publicidade,
+  como antes.
 
 ## Avisos do painel (`rastro_admin_avisos`)
 
@@ -368,16 +397,16 @@ atributos) ou hash.
 
 ## Não conferido
 
-- **TikTok, trecho de carga:** a documentação oficial é montada por script e
-  não abriu; o trecho `ttq` (lista de métodos, `ttq.load`, `?sdkid=&lib=ttq`)
-  é o publicado pelo TikTok que conhecemos, sem comparação letra a letra com
-  a versão atual.
-- **TikTok, parâmetros e deduplicação:** `contents` com `content_id`,
-  `content_type`, `content_name`, `quantity` e `price`, e `{ event_id }` no
-  terceiro argumento do `ttq.track`. A página de parâmetros cita
-  `content_ids`, `content_type`, `quantity`, `value`, `currency` e
-  `search_string`; a de deduplicação só diz que o `event_id` vai no pixel e
-  na API, sem código.
+- **TikTok (conferido em 2026-11-16):** o trecho de carga oficial
+  (business-api.tiktok.com, Install the pixel using code, v1.3) bate com o
+  do Rastro, com `holdConsent`, `revokeConsent` e `grantConsent` na lista.
+  Eventos atuais: `ViewContent`, `AddToCart`, `InitiateCheckout`,
+  `AddPaymentInfo`, `Search` e `Purchase` (`CompletePayment` e
+  `PlaceAnOrder` saíram da lista). Parâmetros `contents`, `content_ids`,
+  `content_type`, `value`, `currency`, `search_string`; `{ event_id }` no
+  terceiro argumento do `ttq.track` (página Event deduplication). O
+  `ttq.load()` baixa o `events.js` mesmo com `holdConsent()`: por isso, com
+  consentimento, o TikTok só carrega depois do aceite.
 - **TikTok e Meta, hosts de CSP:** não há página oficial lida com a lista;
   os da tabela são os do carregador e do envio conhecidos.
 - **Google, instalação nova:** a página de instalação do gtag.js hoje mostra
@@ -404,10 +433,12 @@ atributos) ou hash.
   TikTok documentam como desligar no código; a página da Meta sobre
   `autoConfig` não cita a correspondência avançada. Fica no Gerenciador de
   Eventos de cada um.
-- **TikTok, revogação:** `ttq.revokeConsent()` está na lista de métodos do
-  trecho de carga, mas a página oficial do modo de consentimento do TikTok
-  não abriu (só guias de terceiros descrevem `holdConsent`, `grantConsent`
-  e `revokeConsent`). Fica fora; a recarga da página na revogação resolve.
+- **TikTok, verificação de domínio:** o TikTok for Developers verifica
+  domínio por registro TXT no DNS (fora do WordPress) e prefixo de endereço
+  por um arquivo de assinatura; o Business Center verifica a empresa por
+  documentos. Nenhuma meta tag oficial do TikTok foi encontrada. O Rastro
+  oferece o arquivo (seção Verificações de domínio); nome e conteúdo exatos
+  vêm da tela do TikTok.
 - **TikTok, cookies:** a ajuda oficial cita `_ttp`, `ttcsid_*` e `ttclid`
   (primeira parte); a limpeza na revogação é do consentimento
   (`docs/CONSENTIMENTO.md`).

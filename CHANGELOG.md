@@ -18,6 +18,10 @@ Versões: [SemVer](https://semver.org/lang/pt-BR/).
   aba Geral) e a verificação de domínio da Meta
   (`facebook-domain-verification`).
 - Verificação do site no Pinterest (`p:domain_verify`) na aba Verificações.
+- TikTok: código base oficial no topo do `<head>` no modo básico
+  (`tiktok_cabecalho`), `ttq.revokeConsent()` na revogação, `content_ids`
+  nos eventos e arquivo de verificação `.txt` na raiz do site (assinatura
+  do TikTok for Developers e outros serviços).
 
 ## [1.0.0] - 2026-11-16
 

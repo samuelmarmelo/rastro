@@ -276,6 +276,10 @@
 		},
 		// Trecho oficial do TikTok Pixel (fila ttq).
 		tiktok: function ( c ) {
+			// Código base já no <head> (modo básico, tiktok_cabecalho): nada a repetir.
+			if ( 'completo' === c.cabecalho && w.ttq && 'function' === typeof w.ttq.track ) {
+				return;
+			}
 			w.TiktokAnalyticsObject = 'ttq';
 			var ttq = w.ttq = w.ttq || [];
 			ttq.methods = [ 'page', 'track', 'identify', 'instances', 'debug', 'on', 'off', 'once', 'ready', 'alias', 'group', 'enableCookie', 'disableCookie', 'holdConsent', 'revokeConsent', 'grantConsent' ];
@@ -558,8 +562,11 @@
 		var dados = valorMoeda( p, {} );
 		if ( itens.length ) {
 			dados.content_type = 'product';
+			dados.content_ids = itens.map( function ( i ) {
+				return String( i.item_id );
+			} );
 			dados.contents = itens.map( function ( i ) {
-				var item = { content_id: String( i.item_id ), content_type: 'product', quantity: quantidade( i ) };
+				var item ={ content_id: String( i.item_id ), content_type: 'product', quantity: quantidade( i ) };
 				if ( 'string' === typeof i.item_name ) {
 					item.content_name = i.item_name;
 				}
@@ -857,6 +864,13 @@
 		try {
 			if ( carregados.openai && 'function' === typeof w.oaiq ) {
 				w.oaiq( 'consent', false );
+			}
+		} catch ( e ) {}
+		// TikTok: para de compartilhar, inclusive o que estava na fila
+		// (Cookie Consent Mode oficial: ttq.revokeConsent()).
+		try {
+			if ( carregados.tiktok && w.ttq && 'function' === typeof w.ttq.revokeConsent ) {
+				w.ttq.revokeConsent();
 			}
 		} catch ( e ) {}
 		// Meta: pausa o envio do Pixel até a recarga (API de consentimento oficial).

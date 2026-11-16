@@ -300,12 +300,15 @@ confere( 'HTML igual com e sem cookie (cache de página seguro)', $heads['sem co
 confere( 'IDs só dentro do JSON da configuração', substr_count( $heads['sem cookie'], 'GTM-ABC1234' ), 1 );
 
 $fonte = file_get_contents( $rastro_dir . '/tags/tags.php' );
-// Exceção única: o código base do Meta Pixel (seção 5.1), numa função própria.
+// Exceções: os códigos base do Meta Pixel (seção 5.1) e do TikTok Pixel no
+// modo básico (seção 5.2), cada um numa função própria.
 $sem_meta = (string) preg_replace( '#\nfunction rastro_tags_meta_cabecalho_js\(.*?\n}\n#s', "\n", $fonte );
 $sem_meta = (string) preg_replace( '#\nfunction rastro_tags_meta_cabecalho\(\).*?\n}\n#s', "\n", $sem_meta );
+$sem_meta = (string) preg_replace( '#\nfunction rastro_tags_tiktok_cabecalho_js\(.*?\n}\n#s', "\n", $sem_meta );
+$sem_meta = (string) preg_replace( '#\nfunction rastro_tags_tiktok_cabecalho\(\).*?\n}\n#s', "\n", $sem_meta );
 $sem_meta = (string) preg_replace( '#/\*.*?\*/#s', '', $sem_meta );
-confere( 'tags.php não imprime script (fora do Meta Pixel)', preg_match( '#[\'"]<script|wp_print_inline_script_tag|rastro_script_inline\(|wp_add_inline_script\(#', $sem_meta ), 0 );
-confere( 'tags.php sem endereço de carregador (fora do Meta Pixel)', preg_match( $terceiros, $sem_meta ), 0 );
+confere( 'tags.php não imprime script (fora dos códigos base da Meta e do TikTok)', preg_match( '#[\'"]<script|wp_print_inline_script_tag|rastro_script_inline\(|wp_add_inline_script\(#', $sem_meta ), 0 );
+confere( 'tags.php sem endereço de carregador (fora dos códigos base da Meta e do TikTok)', preg_match( $terceiros, $sem_meta ), 0 );
 
 /* 4b. Meta Pixel no cabeçalho e no rodapé (seção 5.1) ------------------------------- */
 
@@ -347,6 +350,21 @@ remove_all_filters( 'rastro_destinos' );
 
 $s = $cabecalho_meta( config_cheia(), array( 'logado' => true, 'capacidades' => array( 'edit_posts' => true ) ) );
 confere( 'equipe: nada do Meta', false !== strpos( $s['head'], 'rastro-meta-pixel' ), false );
+
+/* 4c. TikTok Pixel no cabeçalho, só no modo básico (seção 5.2) ---------------------- */
+
+confere( 'TikTok: código base no wp_head, prioridade 3', has_action( 'wp_head', 'rastro_tags_tiktok_cabecalho' ), 3 );
+$s = $cabecalho_meta( config_cheia() );
+confere( 'TikTok LGPD: nada no head', false !== strpos( $s['head'], 'rastro-tiktok-pixel' ) || false !== strpos( $s['head'], 'analytics.tiktok.com' ), false );
+confere( 'TikTok LGPD: navegador sem cabecalho', isset( rastro_destinos()['tiktok']['navegador']['cabecalho'] ), false );
+$s = $cabecalho_meta( config_cheia( array( 'modo' => 'basico' ) ) );
+confere( 'TikTok básico: código oficial no head', false !== strpos( $s['head'], 'id="rastro-tiktok-pixel"' ) && false !== strpos( $s['head'], 'ttq.load("ABCDEFGHIJ12345678");ttq.page();' ), true );
+confere( 'TikTok básico: navegador avisado', rastro_destinos()['tiktok']['navegador']['cabecalho'], 'completo' );
+$s = $cabecalho_meta( config_cheia( array( 'modo' => 'basico', 'tiktok_cabecalho' => '0' ) ) );
+confere( 'TikTok básico com o campo desligado: nada', false !== strpos( $s['head'], 'rastro-tiktok-pixel' ), false );
+$s = $cabecalho_meta( config_cheia( array( 'modo' => 'basico' ) ), array( 'uri' => '/minha-conta/', 'woo' => array( 'is_account_page' => true ) ) );
+confere( 'TikTok básico em página privada: nada', false !== strpos( $s['head'], 'rastro-tiktok-pixel' ), false );
+confere( 'regra TikTok: ID inválido', rastro_tags_tiktok_cabecalho_js( 'abc");alert(1);//' ), '' );
 
 confere( 'regra: ID inválido não gera código', rastro_tags_meta_cabecalho_js( '12</script>', 'fila' ), '' );
 confere( 'regra: tipo inválido não gera código', rastro_tags_meta_cabecalho_js( '123456789012345', 'outro' ), '' );

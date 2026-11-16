@@ -136,6 +136,12 @@ function rastro_tags_navegador_destino( string $destino, string $id, array $conf
 				'debug' => isset( $config['openai_debug'] ) && '1' === $config['openai_debug'],
 			);
 
+		case 'tiktok':
+			return rastro_tags_tiktok_completo( $config, $privada ) ? array(
+				'id'        => $id,
+				'cabecalho' => 'completo',
+			) : array( 'id' => $id );
+
 		case 'meta':
 			$cabecalho = rastro_tags_meta_tipo( $config, $privada );
 			return '' === $cabecalho ? array( 'id' => $id ) : array(
@@ -405,6 +411,43 @@ function rastro_tags_meta_noscript_html( string $id, string $tipo ): string {
 	return '<noscript><img height="1" width="1" style="display:none" alt="" src="' . esc_url( $src ) . '" /></noscript>' . "\n";
 }
 
+/**
+ * Regra pura: o código base do TikTok Pixel vai completo no topo do <head>?
+ * Só no modo básico (sem consentimento a pedir), com `tiktok_cabecalho`
+ * ligado e em página pública. Com consentimento, nada: o trecho oficial
+ * baixa o events.js no `ttq.load()`, mesmo com `holdConsent()` (documentação
+ * do TikTok, Cookie Consent Mode, conferida em 2026-11-16).
+ *
+ * @param array $config  Configuração do Rastro.
+ * @param bool  $privada Página privada?
+ * @return bool
+ */
+function rastro_tags_tiktok_completo( array $config, bool $privada ): bool {
+	return ! $privada
+		&& isset( $config['tiktok_cabecalho'], $config['modo'] )
+		&& '1' === $config['tiktok_cabecalho']
+		&& 'basico' === $config['modo'];
+}
+
+/**
+ * Regra pura: o código base oficial do TikTok Pixel (trecho de
+ * business-api.tiktok.com, Install the pixel using code, v1.3, conferido em
+ * 2026-11-16), com os métodos de consentimento na lista, `ttq.load` e
+ * `ttq.page`.
+ *
+ * @param string $id ID do TikTok Pixel (validado de novo aqui).
+ * @return string '' para ID inválido.
+ */
+function rastro_tags_tiktok_cabecalho_js( string $id ): string {
+	$id = rastro_tags_id( 'tiktok', $id );
+	if ( '' === $id ) {
+		return '';
+	}
+
+	return '!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=d.createElement("script");o.type="text/javascript",o.async=!0,o.src=r+"?sdkid="+e+"&lib="+t;var a=d.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};'
+		. 'ttq.load(' . rastro_json( $id ) . ');ttq.page();}(window,document,"ttq");';
+}
+
 /* Leitura ------------------------------------------------------------------ */
 
 /**
@@ -636,6 +679,31 @@ function rastro_tags_meta_rodape(): void {
 	}
 }
 add_action( 'wp_footer', 'rastro_tags_meta_rodape', 20 );
+
+/* TikTok Pixel no cabeçalho (modo básico) ---------------------------------------- */
+
+/**
+ * wp_head (prioridade 3): código base do TikTok Pixel no modo básico, em
+ * página pública, quando a página mede e o tags.js está na página.
+ *
+ * @return void
+ */
+function rastro_tags_tiktok_cabecalho(): void {
+	try {
+		if ( rastro_requisicao_restrita() || ! rastro_deve_medir() || ! function_exists( 'wp_script_is' ) || ! wp_script_is( 'rastro-tags', 'enqueued' ) ) {
+			return;
+		}
+		$destinos = rastro_destinos();
+		$tiktok   = isset( $destinos['tiktok'] ) ? $destinos['tiktok'] : array();
+		if ( empty( $tiktok['ativo'] ) || ! isset( $tiktok['navegador']['cabecalho'] ) || 'completo' !== $tiktok['navegador']['cabecalho'] ) {
+			return;
+		}
+		rastro_script_inline( 'rastro-tiktok-pixel', rastro_tags_tiktok_cabecalho_js( (string) $tiktok['id'] ) );
+	} catch ( \Throwable $erro ) {
+		do_action( 'rastro_falha', 'tags-tiktok-cabecalho', $erro );
+	}
+}
+add_action( 'wp_head', 'rastro_tags_tiktok_cabecalho', 3 );
 
 /* Avisos do painel -------------------------------------------------------------- */
 
