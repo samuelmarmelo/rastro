@@ -29,7 +29,7 @@ uma ponte do site (contrato, seção 9). Os testes carregam os arquivos direto.
   em `after_setup_theme`, embutido).
 - `rastro_modulos()` já traz a lista inteira, na ordem: `nucleo/config.php`,
   `nucleo/regras.php`, `nucleo/saida.php`, `logs/logs.php`, `consentimento/consentimento.php`,
-  `consentimento/aviso.php`, `tags/tags.php`, `loja/eventos.php`,
+  `consentimento/aviso.php`, `tags/tags.php`, `verificacao/arquivo.php`, `loja/eventos.php`,
   `atribuicao/atribuicao.php`, `atribuicao/pedido.php`,
   `relatorios/dados.php`, `relatorios/relatorios.php` e, só no painel,
   `admin/admin.php`. Arquivo ausente é pulado em silêncio; erro num módulo
@@ -54,6 +54,8 @@ uma ponte do site (contrato, seção 9). Os testes carregam os arquivos direto.
 | `google_verificacao` | verificacao | id | `/^[A-Za-z0-9_-]{20,100}$/D`; aceita a tag `<meta>` colada (fica o `content`) | `''` |
 | `facebook_verificacao` | verificacao | id | `/^[A-Za-z0-9]{20,64}$/D`; aceita a tag `<meta>` colada | `''` |
 | `pinterest_verificacao` | verificacao | id | `/^[A-Za-z0-9]{20,64}$/D`; aceita a tag `<meta>` colada | `''` |
+| `arquivo_verificacao_nome` | verificacao | id | `/^[A-Za-z0-9_-]{1,100}\.txt$/D` | `''` |
+| `arquivo_verificacao_conteudo` | verificacao | id | `/^[A-Za-z0-9=:._-]{1,300}$/D` | `''` |
 | `carregamento` | geral | selecao | `ocioso`, `interacao`, `imediato` | `ocioso` |
 | `eventos_loja` | eventos | booleano | | `'1'` |
 | `evento_view_item_list`, `evento_view_item`, `evento_add_to_cart`, `evento_remove_from_cart`, `evento_view_cart`, `evento_begin_checkout`, `evento_add_payment_info`, `evento_purchase`, `evento_search` | eventos | booleano | | `'1'` |

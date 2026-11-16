@@ -113,7 +113,9 @@ rastro/
 │   ├── consentimento.php         provedores, fila do <head>, Consent Mode v2 (T2)
 │   └── aviso.php                 HTML do aviso próprio e botão de preferências (T2)
 ├── tags/
-│   └── tags.php                  destinos, meta de verificação, avisos de duplicidade (T3)
+│   └── tags.php                  destinos, metas de verificação, códigos base no <head>, avisos de duplicidade (T3)
+├── verificacao/
+│   └── arquivo.php               arquivo de verificação .txt na raiz do site (seção 5.2)
 ├── loja/
 │   └── eventos.php               dados dos eventos do WooCommerce, deduplicação da compra (T4)
 ├── atribuicao/
@@ -152,6 +154,7 @@ rótulo, ajuda, padrão e regra. A tela, o salvar e a leitura saem dele.
 | `meta` | geral | `^[0-9]{8,20}$` | `''` |
 | `meta_cabecalho` | geral | `1` ou `0` (código base do Meta Pixel no `<head>`, seção 5.1) | `1` |
 | `tiktok` | geral | `^[A-Z0-9]{15,30}$` (maiúsculas) | `''` |
+| `tiktok_cabecalho` | geral | `1` ou `0` (código base do TikTok no `<head>` só no modo `basico`, seção 5.2) | `1` |
 | `openai` | geral | `^[A-Za-z0-9_-]{10,64}$` | `''` |
 | `openai_debug` | geral | `1` ou `0` | `0` |
 | `posthog` | geral | `^phc_[A-Za-z0-9]{20,80}$` | `''` |
@@ -159,6 +162,8 @@ rótulo, ajuda, padrão e regra. A tela, o salvar e a leitura saem dele.
 | `posthog_logs` | geral | `1` ou `0` (logs do Rastro no PostHog Logs, seção 15) | `1` |
 | `posthog_logs_console` | geral | `1` ou `0` (console do navegador nos logs) | `0` |
 | `google_verificacao` | verificacao | `^[A-Za-z0-9_-]{20,100}$` (só o valor de `content`; se colarem a tag inteira, o valor é extraído) | `''` |
+| `arquivo_verificacao_nome` | verificacao | `^[A-Za-z0-9_-]{1,100}\.txt$` | `''` |
+| `arquivo_verificacao_conteudo` | verificacao | `^[A-Za-z0-9=:._-]{1,300}$` | `''` |
 | `pinterest_verificacao` | verificacao | `^[A-Za-z0-9]{20,64}$` (meta `p:domain_verify`; tag colada vira o valor) | `''` |
 | `facebook_verificacao` | verificacao | `^[A-Za-z0-9]{20,64}$` (meta `facebook-domain-verification`; tag colada vira o valor) | `''` |
 | `carregamento` | geral | `ocioso`, `interacao` ou `imediato` | `ocioso` |
@@ -371,6 +376,20 @@ configuração do navegador). No modo `basico` e em página pública, o código
 oficial completo (`cabecalho: 'completo'`) e o `<noscript>` com a imagem
 do PageView no `wp_footer`. Página privada nunca leva o completo. Manual:
 `docs/TAGS.md`.
+
+### 5.2 TikTok e arquivo de verificação
+
+- `tiktok_cabecalho` ligado, modo `basico` e página pública: código base
+  oficial do TikTok Pixel no `wp_head` (prioridade 3) e `cabecalho:
+  'completo'` para o `tags.js` não repetir. Com consentimento, nada no
+  `<head>` (o `ttq.load()` baixa o `events.js` na hora).
+- Revogação: `ttq.revokeConsent()` quando o TikTok carregou.
+- Eventos com `content_ids` além de `contents`.
+- `verificacao/arquivo.php`: com `arquivo_verificacao_nome` e
+  `arquivo_verificacao_conteudo`, `GET`/`HEAD` em `<página inicial>/<nome>`
+  responde o conteúdo em `text/plain` com `nosniff` (`parse_request`,
+  prioridade 0). Nada em disco. Para o arquivo de assinatura do TikTok for
+  Developers e outros `.txt` de verificação.
 
 **Verificação do Google:** `<meta name="google-site-verification">` no
 `wp_head` de toda página pública, com o valor validado e `esc_attr`. Não

@@ -506,7 +506,7 @@ const COMPRA = {
   // TikTok.
   const ttq = a.ttq().filter((x) => x[0] === 'track');
   assert.deepEqual(ttq.find((x) => x[1] === 'Purchase'), ['track', 'Purchase', {
-    value: 150.5, currency: 'BRL', content_type: 'product',
+    value: 150.5, currency: 'BRL', content_type: 'product', content_ids: ['11', '12'],
     contents: [
       { content_id: '11', content_type: 'product', quantity: 2, content_name: 'Ração', price: 50 },
       { content_id: '12', content_type: 'product', quantity: 1, content_name: 'Petisco', price: 30.5 },
@@ -862,6 +862,30 @@ if (temPhp.status === 0) {
   const c = ambiente({ destinos: destinosCheios({ meta: { carrega_com: ['publicidade'], id: IDS.meta, cabecalho: 'fila' } }) });
   c.consent(TUDO);
   assert.deepEqual(c.fbq().filter((x) => x[0] === 'init').length, 1, 'sem a fila no head (removida por otimizador): carrega do jeito antigo');
+}
+
+// TikTok (seção 5.2): revogação chama ttq.revokeConsent(); com o código
+// completo no <head> (modo básico), o tags.js não carrega de novo.
+{
+  const a = ambiente();
+  a.consent(TUDO);
+  a.consent({ analise: true, publicidade: false, decidido: true });
+  assert.ok(a.ttq().some((x) => x[0] === 'revokeConsent'), 'TikTok: revokeConsent na revogação');
+
+  const b = ambiente({
+    destinos: destinosCheios({ tiktok: { carrega_com: ['publicidade'], id: IDS.tiktok, cabecalho: 'completo' } }),
+    consentCfg: { modo: 'basico' },
+    antes(w) {
+      const ttq = w.ttq = [];
+      ttq.track = function () { ttq.push(['track'].concat(Array.from(arguments))); };
+      ttq.page = function () { ttq.push(['page']); };
+      ttq.load = function (id) { ttq.push(['load', id]); };
+      ttq.load(IDS.tiktok); ttq.page();
+    },
+  });
+  assert.equal(b.scripts().filter((s) => s.attrs['data-rastro-tag'] === 'tiktok').length, 0, 'TikTok completo: sem script repetido');
+  assert.equal(b.ttq().filter((x) => x[0] === 'page').length, 1, 'TikTok completo: page uma vez só');
+  assert.equal(b.w.rastro.tags.carregado('tiktok'), true, 'TikTok completo: carregado');
 }
 
 console.log('Rastro tags contract: PASS');

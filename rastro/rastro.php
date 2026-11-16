@@ -55,6 +55,7 @@ if ( ! function_exists( 'rastro_modulos' ) ) {
 			'consentimento/consentimento.php',
 			'consentimento/aviso.php',
 			'tags/tags.php',
+			'verificacao/arquivo.php',
 			'loja/eventos.php',
 			'atribuicao/atribuicao.php',
 			'atribuicao/pedido.php',
