@@ -1,0 +1,10 @@
+# Chaves e segredos nunca entram no repositório.
+*.pem
+*.key
+.env
+.env.*
+# Saídas locais.
+dist/
+node_modules/
+.DS_Store
+Thumbs.db

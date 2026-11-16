@@ -1,0 +1,177 @@
+/*
+ * Rastro: aviso de cookies próprio (contrato, seção 4; manual
+ * docs/CONSENTIMENTO.md).
+ *
+ * Visual só por variáveis, com reserva sóbria: --rastro-fundo,
+ * --rastro-texto, --rastro-borda, --rastro-destaque, --rastro-raio,
+ * --rastro-fonte. O tema troca no :root. Celular primeiro; não cobre a
+ * página inteira; respeita prefers-reduced-motion.
+ */
+
+.rastro-aviso[hidden],
+.rastro-aviso [hidden],
+.rastro-preferencias[hidden] {
+	display: none !important;
+}
+
+.rastro-aviso {
+	position: fixed;
+	right: 12px;
+	bottom: 12px;
+	left: 12px;
+	z-index: 99990;
+	max-height: calc(100vh - 24px);
+	overflow-y: auto;
+	color: var(--rastro-texto, #1f2328);
+	font-family: var(--rastro-fonte, inherit);
+	font-size: 15px;
+	line-height: 1.5;
+	animation: rastro-aviso-entra 0.2s ease-out;
+}
+
+.rastro-aviso__caixa {
+	padding: 16px;
+	background: var(--rastro-fundo, #ffffff);
+	border: 1px solid var(--rastro-borda, #d0d7de);
+	border-radius: var(--rastro-raio, 8px);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.rastro-aviso__texto {
+	margin: 0 0 12px;
+	text-wrap: pretty;
+}
+
+.rastro-aviso__link {
+	color: var(--rastro-destaque, #0b5cad);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.rastro-aviso__preferencias {
+	margin: 0 0 12px;
+	padding: 12px 0 0;
+	border-top: 1px solid var(--rastro-borda, #d0d7de);
+}
+
+.rastro-aviso__grupo {
+	margin: 0 0 12px;
+	padding: 0;
+	border: 0;
+}
+
+.rastro-aviso__legenda {
+	margin: 0 0 8px;
+	padding: 0;
+	font-weight: 600;
+}
+
+.rastro-aviso__opcao {
+	margin: 0 0 8px;
+}
+
+.rastro-aviso__opcao label {
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.rastro-aviso__caixa-marcar {
+	width: 18px;
+	height: 18px;
+	margin: 0 6px 0 0;
+	vertical-align: -3px;
+	accent-color: var(--rastro-destaque, #0b5cad);
+}
+
+.rastro-aviso__ajuda {
+	margin: 2px 0 0 24px;
+	font-size: 14px;
+	text-wrap: pretty;
+}
+
+.rastro-aviso__acoes {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+/* Os três botões com o mesmo tamanho e o mesmo destaque. */
+.rastro-aviso__botao,
+.rastro-preferencias {
+	min-height: 44px;
+	padding: 8px 16px;
+	color: var(--rastro-texto, #1f2328);
+	font: inherit;
+	font-family: var(--rastro-fonte, inherit);
+	font-size: 15px;
+	line-height: 1.2;
+	background: var(--rastro-fundo, #ffffff);
+	border: 1px solid var(--rastro-texto, #1f2328);
+	border-radius: var(--rastro-raio, 8px);
+	cursor: pointer;
+}
+
+.rastro-aviso__acoes .rastro-aviso__botao {
+	flex: 1 1 0;
+	min-width: 96px;
+}
+
+.rastro-aviso__botao:hover,
+.rastro-preferencias:hover {
+	border-color: var(--rastro-destaque, #0b5cad);
+	color: var(--rastro-destaque, #0b5cad);
+}
+
+.rastro-aviso__botao:focus-visible,
+.rastro-preferencias:focus-visible,
+.rastro-aviso__caixa-marcar:focus-visible,
+.rastro-aviso__link:focus-visible {
+	outline: 2px solid var(--rastro-destaque, #0b5cad);
+	outline-offset: 2px;
+}
+
+/* Botão fixo discreto, no canto. */
+.rastro-preferencias--flutuante {
+	position: fixed;
+	bottom: 12px;
+	left: 12px;
+	z-index: 99980;
+	min-height: 36px;
+	padding: 6px 12px;
+	font-size: 13px;
+	opacity: 0.9;
+}
+
+@media (min-width: 768px) {
+	.rastro-aviso {
+		right: auto;
+		bottom: 16px;
+		left: 16px;
+		width: 420px;
+		max-width: calc(100vw - 32px);
+	}
+}
+
+@keyframes rastro-aviso-entra {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.rastro-aviso {
+		animation: none;
+	}
+}
+
+@media print {
+	.rastro-aviso,
+	.rastro-preferencias--flutuante {
+		display: none !important;
+	}
+}
