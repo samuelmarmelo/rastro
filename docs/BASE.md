@@ -7,7 +7,7 @@ Contrato: `docs/CONTRATO.md` (seções 1,
 
 | Arquivo | Papel |
 |---|---|
-| `rastro.php` | cabeçalho de plugin completo (Rastro 0.1.0, PHP 7.4, text domain `rastro`), constantes, carregador dos módulos |
+| `rastro.php` | cabeçalho de plugin completo (Rastro, PHP 7.4, text domain `rastro`), constantes, carregador dos módulos |
 | `nucleo/config.php` | esquema único dos campos, validação, leitura e gravação da opção `rastro_config` |
 | `nucleo/regras.php` | onde medir: cópia local, equipe, requisição restrita, tipo e privacidade da página, endereço saneado |
 | `nucleo/saida.php` | `window.rastroConfig` no `<head>`, script inline e registro de scripts fora do atraso dos otimizadores |
