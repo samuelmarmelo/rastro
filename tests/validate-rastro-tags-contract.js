@@ -804,6 +804,10 @@ if (temPhp.status === 0) {
   a.w.rastro.log('nivel-estranho', 'depois', { lista: [1], ok: true });
   const ultimo = a.posthog().filter((x) => x[0] === 'captureLog').pop()[1];
   assert.deepEqual(ultimo, { body: 'depois', level: 'info', attributes: { ok: true } }, 'nível desconhecido vira info; só valores simples');
+  a.w.rastro.log('error', 'falhou para ana@exemplo.com, cpf 123.456.789-09, pedido 4521, /view-order/4521/', { quem: 'ana%40exemplo.com' });
+  const mascarado = a.posthog().filter((x) => x[0] === 'captureLog').pop()[1];
+  assert.equal(mascarado.body, 'falhou para [e-mail], cpf [cpf], pedido [número], /view-order/:id/', 'log do navegador mascarado');
+  assert.equal(mascarado.attributes.quem, '[e-mail]', 'atributo mascarado');
 
   const b = ambiente({ destinos: comLogs(LOGS) });
   b.w.rastro.log('error', 'some sem aceite');
