@@ -9,6 +9,7 @@
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       rastro
+ * Update URI:        https://github.com/samuelmarmelo/rastro
  *
  * Base do plugin (contrato docs/CONTRATO.md,
  * seção 3; manual docs/BASE.md): constantes e carregador dos módulos.
@@ -58,6 +59,8 @@ if ( ! function_exists( 'rastro_modulos' ) ) {
 			'atribuicao/pedido.php',
 			'relatorios/dados.php',
 			'relatorios/relatorios.php',
+			'atualizacao/chaves.php',
+			'atualizacao/atualizador.php',
 		);
 		if ( is_admin() ) {
 			$modulos[] = 'admin/admin.php';
