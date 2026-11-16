@@ -1,0 +1,19 @@
+name: Sugestão
+description: Um recurso novo ou uma melhoria.
+labels: [sugestão]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qual problema isso resolve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Como você imagina a solução?
+  - type: textarea
+    id: privacidade
+    attributes:
+      label: Privacidade
+      description: A sugestão envia algo novo para terceiros ou muda o que carrega antes do aceite?

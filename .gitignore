@@ -8,3 +8,27 @@ dist/
 node_modules/
 .DS_Store
 Thumbs.db
+# Chave de assinatura e cofres locais (nunca no repositório).
+.rastro/
+*.p12
+*.pfx
+chave-assinatura*
+*.secret
+# Saídas da release e de pacotes locais.
+*.zip
+*.zip.sha256
+*.zip.sig
+build/
+vendor/
+# WordPress local (Playground, wp-env) e logs.
+.wp-env*
+wordpress/
+playground/
+*.log
+debug.log
+# Editores, sistema e ferramentas de IA locais.
+.vscode/
+.idea/
+*.swp
+.claude/
+graphify-out/
