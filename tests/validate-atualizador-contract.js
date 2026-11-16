@@ -37,10 +37,10 @@ const temPhp = spawnSync('php', ['-v'], { encoding: 'utf8' }).status === 0;
 
   // 2. Ganchos só no plugin próprio, todos dentro do mesmo if.
   const bloco = fonte.slice(fonte.indexOf('if ( rastro_atualizador_plugin_proprio() ) {'));
-  for (const g of ["'update_plugins_github.com'", "'upgrader_pre_download'", "'upgrader_source_selection'", "'auto_update_plugin'", "'plugins_api'", "'load-update-core.php'"]) {
+  for (const g of ["'update_plugins_github.com'", "'upgrader_pre_download'", "'upgrader_source_selection'", "'auto_update_plugin'", "'plugins_api'", "'load-update-core.php'", "'admin_init'"]) {
     tem(bloco, g, `gancho ${g} dentro do if do plugin próprio`);
   }
-  assert.equal((fonte.match(/\badd_(?:filter|action)\(/g) || []).length, 6, 'nenhum gancho fora do bloco');
+  assert.equal((fonte.match(/\badd_(?:filter|action)\(/g) || []).length, 7, 'nenhum gancho fora do bloco');
 
   // 3. Rede: só wp_safe_remote_get, nunca com token, nunca seguindo redirecionamento.
   semMatch(fonte, /\bwp_remote_(?:get|post|request)\(|download_url\(|curl_|file_get_contents\(\s*['"]https?:/, 'só wp_safe_remote_get');

@@ -59,6 +59,41 @@ export function chavesConfiaveis(php) {
   return [...corpo[1].matchAll(/'([0-9a-f]{64})'/g)].map((m) => m[1]);
 }
 
+/** Versão X.Y.Z no mesmo formato que o plugin aceita (rastro_atualizador_versao_valida). */
+export function versaoValida(v) {
+  return typeof v === 'string' && /^(?:0|[1-9]\d{0,3})\.(?:0|[1-9]\d{0,3})\.(?:0|[1-9]\d{0,3})$/.test(v);
+}
+
+/** Host aceito para o link assinado de um arquivo de versão. */
+export const DESTINO = /^https:\/\/(?:release-assets|objects|github-releases)\.githubusercontent\.com\//;
+
+/**
+ * Nomes das entradas de um zip (diretório central), recusando link. Serve
+ * para conferir o zip gerado, não a árvore do Git.
+ */
+export function entradasDoZip(zip) {
+  let fim = -1;
+  for (let i = zip.length - 22; i >= Math.max(0, zip.length - 65557); i--) {
+    if (zip.readUInt32LE(i) === 0x06054b50) { fim = i; break; }
+  }
+  if (fim < 0) throw new Error('zip sem diretório central');
+  const total = zip.readUInt16LE(fim + 10);
+  let p = zip.readUInt32LE(fim + 16);
+  const nomes = [];
+  for (let n = 0; n < total; n++) {
+    if (zip.readUInt32LE(p) !== 0x02014b50) throw new Error('entrada do zip inválida');
+    const lenNome = zip.readUInt16LE(p + 28);
+    const lenExtra = zip.readUInt16LE(p + 30);
+    const lenComent = zip.readUInt16LE(p + 32);
+    const tipo = (zip.readUInt32LE(p + 38) >>> 16) & 0o170000;
+    const nome = zip.subarray(p + 46, p + 46 + lenNome).toString('utf8');
+    if (tipo === 0o120000) throw new Error(`link no zip: ${nome}`);
+    nomes.push(nome);
+    p += 46 + lenNome + lenExtra + lenComent;
+  }
+  return nomes;
+}
+
 /** Arquivo do repositório que não pode ir no zip (caminho a partir de rastro/). */
 export function proibidoNoZip(relativo) {
   return /(^|\/)(tests?|node_modules|\.github|docs|tools)\//.test(relativo)
@@ -71,8 +106,15 @@ function falhar(msg) {
   process.exit(1);
 }
 
+/** Ambiente dos processos filhos: sem senha da chave e sem token. */
+export function ambienteLimpo(env = process.env) {
+  const limpo = { ...env };
+  for (const k of ['RASTRO_CHAVE_SENHA', 'GITHUB_TOKEN', 'GH_TOKEN']) delete limpo[k];
+  return limpo;
+}
+
 function git(args) {
-  const r = spawnSync('git', args, { cwd: raiz, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync('git', args, { cwd: raiz, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: ambienteLimpo() });
   if (r.status !== 0) falhar(`git ${args.join(' ')} falhou: ${(r.stderr || '').trim()}`);
   return (r.stdout || '').trim();
 }
@@ -86,7 +128,7 @@ async function principal() {
   const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
   if (!SECO && branch !== 'main') falhar(`release só sai da main (agora: ${branch})`);
   if (git(['status', '--porcelain'])) falhar('há mudanças locais; commite ou guarde antes');
-  const busca = spawnSync('git', ['fetch', '-q', 'origin', '--tags'], { cwd: raiz, encoding: 'utf8' });
+  const busca = spawnSync('git', ['fetch', '-q', 'origin', '--tags'], { cwd: raiz, encoding: 'utf8', env: ambienteLimpo() });
   if (busca.status !== 0 && !SECO) falhar('git fetch falhou: sem rede não há release');
   const head = git(['rev-parse', 'HEAD']);
   if (!SECO && head !== git(['rev-parse', 'origin/main'])) falhar('HEAD diferente de origin/main: faça o push antes');
@@ -94,7 +136,7 @@ async function principal() {
   // 2. Versão.
   const plugin = ler('rastro/rastro.php');
   const versao = (/^ \* Version:\s+(\S+)$/m.exec(plugin) || [])[1] || '';
-  if (!/^\d+\.\d+\.\d+$/.test(versao)) falhar(`Version inválida em rastro/rastro.php: "${versao}"`);
+  if (!versaoValida(versao)) falhar(`Version inválida em rastro/rastro.php: "${versao}"`);
   const constante = (/define\( 'RASTRO_VERSAO', '([^']+)' \);/.exec(plugin) || [])[1];
   if (constante !== versao) falhar(`RASTRO_VERSAO (${constante}) diferente de Version (${versao})`);
   const estavel = (/^Stable tag:\s*(\S+)$/m.exec(ler('rastro/readme.txt')) || [])[1];
@@ -108,16 +150,20 @@ async function principal() {
   if (!notas) falhar(`seção ## [${versao}] do CHANGELOG.md vazia`);
   const tag = `v${versao}`;
   if (git(['tag', '--list', tag])) falhar(`a tag ${tag} já existe: suba a versão`);
-  const remota = spawnSync('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`], { cwd: raiz, encoding: 'utf8' });
+  const remota = spawnSync('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`], { cwd: raiz, encoding: 'utf8', env: ambienteLimpo() });
   if ((remota.stdout || '').trim()) falhar(`a tag ${tag} já existe no repositório: suba a versão`);
 
   // 3. Suíte.
-  const suite = spawnSync(process.execPath, [join(raiz, 'tests', 'run.js')], { cwd: raiz, encoding: 'utf8' });
+  const suite = spawnSync(process.execPath, [join(raiz, 'tests', 'run.js')], { cwd: raiz, encoding: 'utf8', env: ambienteLimpo() });
   process.stdout.write(suite.stdout || '');
   if (suite.status !== 0) falhar('a suíte falhou; nada foi publicado');
 
   // 4. Zip.
   const arquivos = git(['ls-tree', '-r', '--name-only', 'HEAD', 'rastro']).split('\n').filter(Boolean);
+  // export-ignore e export-subst de qualquer origem (.gitattributes de qualquer pasta, .git/info/attributes).
+  const atributos = spawnSync('git', ['check-attr', '--stdin', 'export-ignore', 'export-subst'], { cwd: raiz, encoding: 'utf8', input: arquivos.join('\n') + '\n', env: ambienteLimpo() }).stdout || '';
+  if (/: export-(?:ignore|subst): (?!unspecified)/.test(atributos)) falhar('atributo export-ignore ou export-subst em arquivo de rastro/: o zip sairia diferente da árvore');
+  if (git(['ls-tree', '-r', 'HEAD', 'rastro']).split('\n').some((l) => l.startsWith('120000 '))) falhar('link simbólico dentro de rastro/');
   for (const a of arquivos) {
     if (!a.startsWith('rastro/')) falhar(`arquivo fora da pasta do plugin: ${a}`);
     if (proibidoNoZip(a.slice('rastro/'.length))) falhar(`arquivo proibido no zip: ${a}`);
@@ -132,6 +178,8 @@ async function principal() {
   const zip = readFileSync(caminhoZip);
   if (zip.length > LIMITE) falhar(`zip com ${zip.length} bytes passa do limite de ${LIMITE}`);
   if (zip.length < 1024) falhar('zip pequeno demais');
+  const doZip = entradasDoZip(zip).filter((n) => !n.endsWith('/')).sort();
+  if (JSON.stringify(doZip) !== JSON.stringify([...arquivos].sort())) falhar('a lista de arquivos do zip gerado é diferente da árvore rastro/');
 
   // 5. Checksum e assinatura.
   const hex = createHash('sha256').update(zip).digest('hex');
@@ -160,7 +208,7 @@ async function principal() {
   const TOKEN = (() => {
     if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN.trim();
     if (process.env.GH_TOKEN) return process.env.GH_TOKEN.trim();
-    const r = spawnSync('git', ['credential', 'fill'], { input: 'protocol=https\nhost=github.com\n\n', encoding: 'utf8' });
+    const r = spawnSync('git', ['credential', 'fill'], { input: 'protocol=https\nhost=github.com\n\n', encoding: 'utf8', env: ambienteLimpo() });
     const m = /^password=(.+)$/m.exec(r.stdout || '');
     if (!m) falhar('sem token: defina GITHUB_TOKEN');
     return m[1].trim();
@@ -187,11 +235,23 @@ async function principal() {
   }
 
   const digestDe = (a) => (a && typeof a.digest === 'string' ? a.digest : '');
+
+  /** Baixa um arquivo do rascunho: token só para a API, o link assinado sem token. */
+  async function baixarDoRascunho(id) {
+    const r = await fetch(`${API}/repos/${REPO}/releases/assets/${id}`, { redirect: 'manual', headers: { Authorization: `Bearer ${TOKEN}`, Accept: 'application/octet-stream', 'User-Agent': 'rastro-release' } });
+    if (r.status === 200) return Buffer.from(await r.arrayBuffer());
+    const local = r.headers.get('location') || '';
+    if (!DESTINO.test(local)) falhar('download do rascunho com redirecionamento inesperado');
+    const d = await fetch(local, { redirect: 'error', headers: { 'User-Agent': 'rastro-release' } });
+    if (!d.ok) falhar(`download do rascunho respondeu ${d.status}`);
+    return Buffer.from(await d.arrayBuffer());
+  }
   async function enviar(nome, conteudo, tipo) {
     const esperado = `sha256:${createHash('sha256').update(conteudo).digest('hex')}`;
     const atual = (release.assets || []).find((a) => a.name === nome);
     if (atual) {
-      if (atual.size === conteudo.length && (!digestDe(atual) || digestDe(atual) === esperado)) return;
+      if (atual.size === conteudo.length && digestDe(atual) === esperado) return;
+      if (atual.size === conteudo.length && !digestDe(atual) && (await baixarDoRascunho(atual.id)).equals(conteudo)) return;
       falhar(`o rascunho ${tag} já tem ${nome} diferente do local; confira no GitHub antes de tentar de novo`);
     }
     const asset = await api('POST', `${UPLOADS}/repos/${REPO}/releases/${release.id}/assets?name=${encodeURIComponent(nome)}`, conteudo, { 'Content-Type': tipo, 'Content-Length': String(conteudo.length) });
@@ -203,11 +263,56 @@ async function principal() {
   await enviar(`${nomeZip}.sig`, conteudoSig, 'text/plain');
 
   const conferida = await api('GET', `/repos/${REPO}/releases/${release.id}`);
-  for (const nome of [nomeZip, `${nomeZip}.sha256`, `${nomeZip}.sig`]) {
-    if (!(conferida.assets || []).some((a) => a.name === nome && a.state === 'uploaded')) falhar(`falta ${nome} no rascunho; nada foi publicado`);
+  const locais = { [nomeZip]: zip, [`${nomeZip}.sha256`]: conteudoHash, [`${nomeZip}.sig`]: conteudoSig };
+  for (const [nome, conteudo] of Object.entries(locais)) {
+    const a = (conferida.assets || []).find((x) => x.name === nome && x.state === 'uploaded');
+    if (!a) falhar(`falta ${nome} no rascunho; nada foi publicado`);
+    if (a.size !== conteudo.length) falhar(`${nome} no rascunho com tamanho diferente; nada foi publicado`);
+    const esperado = `sha256:${createHash('sha256').update(conteudo).digest('hex')}`;
+    const igual = digestDe(a) ? digestDe(a) === esperado : (await baixarDoRascunho(a.id)).equals(conteudo);
+    if (!igual) falhar(`${nome} no rascunho diferente do local; nada foi publicado`);
   }
   const publicada = await api('PATCH', `/repos/${REPO}/releases/${release.id}`, JSON.stringify({ draft: false, make_latest: 'true', tag_name: tag, target_commitish: head }), { 'Content-Type': 'application/json' });
   console.log(`release: publicada ${publicada.html_url}`);
+
+  // 7. Conferência pública: o que os sites vão baixar, sem token. Até 3
+  // tentativas com espera: logo depois de publicar a API pode demorar.
+  let ultimoErro = null;
+  for (let tentativa = 1; tentativa <= 3; tentativa++) {
+    if (tentativa > 1) await new Promise((ok) => setTimeout(ok, 10000));
+    try {
+      await conferirPublica();
+      console.log('release: conferida como os sites vão baixar (SHA-256 e assinatura)');
+      return;
+    } catch (erro) {
+      ultimoErro = erro;
+      console.warn(`release: conferência pública, tentativa ${tentativa} de 3: ${erro.message}`);
+    }
+  }
+  falhar(`ATENÇÃO: a versão ${tag} foi publicada mas não passou na conferência pública (${ultimoErro.message}). Os sites recusam um pacote que não confere, então nada ruim é instalado. Confira no GitHub; se o pacote estiver errado, apague a versão ${tag} (a tag fica reservada) e publique uma versão maior.`);
+
+  async function conferirPublica() {
+    const resposta = await fetch(`${API}/repos/${REPO}/releases/tags/${tag}`, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'rastro-release' } });
+    if (!resposta.ok) throw new Error(`a API respondeu ${resposta.status}`);
+    const publica = await resposta.json();
+    const baixarPublico = async (nome) => {
+      const url = `https://github.com/${REPO}/releases/download/${tag}/${nome}`;
+      const a = (publica.assets || []).find((x) => x.name === nome);
+      if (!a || a.browser_download_url !== url) throw new Error(`${nome} fora do endereço público esperado`);
+      const r = await fetch(url, { redirect: 'manual', headers: { 'User-Agent': 'rastro-release' } });
+      const destino = r.headers.get('location') || '';
+      if (!DESTINO.test(destino)) throw new Error(`${nome} redireciona para host inesperado`);
+      const d = await fetch(destino, { redirect: 'error', headers: { 'User-Agent': 'rastro-release' } });
+      if (!d.ok) throw new Error(`${nome} respondeu ${d.status}`);
+      return Buffer.from(await d.arrayBuffer());
+    };
+    const zipPublico = await baixarPublico(nomeZip);
+    const hexPublico = createHash('sha256').update(zipPublico).digest('hex');
+    const shaPublico = (await baixarPublico(`${nomeZip}.sha256`)).toString('utf8');
+    const sigPublica = (await baixarPublico(`${nomeZip}.sig`)).toString('utf8').trim();
+    if (hexPublico !== hex || shaPublico !== conteudoHash.toString('utf8')) throw new Error('SHA-256 público diferente do local');
+    if (!verify(null, Buffer.from(mensagemAssinada(tag, nomeZip, hexPublico), 'utf8'), createPublicKey(chave), Buffer.from(sigPublica, 'hex'))) throw new Error('assinatura pública não confere');
+  }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

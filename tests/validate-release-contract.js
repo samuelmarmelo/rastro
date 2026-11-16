@@ -87,12 +87,31 @@ function rastro_atualizador_chaves() {
     'LIMITE = 5 * 1024 * 1024',
     'chavesConfiaveis(',
     'draft: true',
-    "a.state === 'uploaded'",
+    "x.state === 'uploaded'",
+    'entradasDoZip(zip)',
+    "'export-ignore', 'export-subst'",
+    'baixarDoRascunho(',
+    '7. Conferência pública',
+    'versaoValida(versao)',
     "make_latest: 'true'",
   ]) {
     tem(fonte, trecho, `release.mjs: ${trecho}`);
   }
   assert.ok(!/console\.(log|error)\([^)]*TOKEN/.test(fonte), 'o token nunca é impresso');
+  const limpo = rel.ambienteLimpo({ RASTRO_CHAVE_SENHA: 'x', GITHUB_TOKEN: 'y', GH_TOKEN: 'z', PATH: 'p' });
+  assert.deepEqual(limpo, { PATH: 'p' }, 'processos filhos sem senha e sem token');
+  assert.equal((fonte.match(/spawnSync\(/g) || []).length, (fonte.match(/env: ambienteLimpo\(\)/g) || []).length, 'todo spawnSync com ambiente limpo');
+  tem(fonte, "'check-attr', '--stdin', 'export-ignore', 'export-subst'", 'atributos de exportação de qualquer origem');
+  tem(fonte, 'tentativa <= 3', 'conferência pública com novas tentativas');
+
+  // Chave cifrada: ida e volta, senha errada e senha curta.
+  const { privateKey: kc } = crypto.generateKeyPairSync('ed25519');
+  const cifrada = chave.cifrarChave(kc, 'senha-de-teste-bem-longa');
+  assert.ok(!cifrada.includes('PRIVATE KEY'), 'arquivo cifrado sem PEM aberto');
+  assert.match(cifrada, /"formato": "rastro-chave-v1"/);
+  assert.equal(chave.publicaEmHex(chave.decifrarChave(cifrada, 'senha-de-teste-bem-longa')), chave.publicaEmHex(kc));
+  assert.throws(() => chave.decifrarChave(cifrada, 'outra-senha-bem-longa-xx'), /senha/);
+  assert.throws(() => chave.cifrarChave(kc, 'curta'), /16/);
   assert.ok(!/writeFileSync\([^)]*TOKEN/.test(fonte), 'o token nunca é gravado');
 
   // 7. Segredos fora do Git e documentação do formato.

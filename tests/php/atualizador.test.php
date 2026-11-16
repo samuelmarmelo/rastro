@@ -64,6 +64,14 @@ function delete_site_transient( $k ) { // phpcs:ignore
 	unset( $GLOBALS['t_site'][ $k ] );
 	return true;
 }
+$GLOBALS['t_opcoes_site'] = array();
+function get_site_option( $k, $padrao = false ) { // phpcs:ignore
+	return array_key_exists( $k, $GLOBALS['t_opcoes_site'] ) ? $GLOBALS['t_opcoes_site'][ $k ] : $padrao;
+}
+function update_site_option( $k, $v ) { // phpcs:ignore
+	$GLOBALS['t_opcoes_site'][ $k ] = $v;
+	return true;
+}
 
 // Rede simulada: uma resposta por endereço; cada pedido fica anotado.
 $GLOBALS['t_rede']    = array();
@@ -179,6 +187,9 @@ function t_publicar( string $versao, string $zip, array $opcoes = array() ) { //
 	$sig  = bin2hex( sodium_crypto_sign_detached( isset( $opcoes['msg'] ) ? $opcoes['msg'] : $msg, isset( $opcoes['secreta'] ) ? $opcoes['secreta'] : $GLOBALS['t_k']['secreta'] ) ) . "\n";
 	$sha  = ( isset( $opcoes['hex_publicado'] ) ? $opcoes['hex_publicado'] : $hex ) . '  ' . $nome . "\n";
 	$json = t_release( $versao );
+	if ( isset( $opcoes['data'] ) ) {
+		$json['published_at'] = $opcoes['data'];
+	}
 
 	$json['assets'][0]['size'] = isset( $opcoes['tamanho'] ) ? $opcoes['tamanho'] : strlen( $zip );
 	$json['assets'][1]['size'] = strlen( $sha );
@@ -273,7 +284,7 @@ confere( 'release: digest estranho ignorado', rastro_atualizador_regra_release( 
 foreach ( array( 'https://release-assets.githubusercontent.com/a?b=c', 'https://objects.githubusercontent.com/x', 'https://OBJECTS.githubusercontent.com:443/x' ) as $u ) {
 	confere( "destino aceito {$u}", rastro_atualizador_regra_destino( $u ), true );
 }
-foreach ( array( 'http://objects.githubusercontent.com/x', 'https://githubusercontent.com/x', 'https://objects.githubusercontent.com.evil.com/x', 'https://a.b.githubusercontent.com/x', 'https://user:pw@objects.githubusercontent.com/x', 'https://objects.githubusercontent.com:8443/x', 'https://evil.com/?h=objects.githubusercontent.com', "https://objects.githubusercontent.com/x\n", '', array( 'x' ) ) as $u ) {
+foreach ( array( 'https://raw.githubusercontent.com/x', 'https://gist.githubusercontent.com/x', 'http://objects.githubusercontent.com/x', 'https://githubusercontent.com/x', 'https://objects.githubusercontent.com.evil.com/x', 'https://a.b.githubusercontent.com/x', 'https://user:pw@objects.githubusercontent.com/x', 'https://objects.githubusercontent.com:8443/x', 'https://evil.com/?h=objects.githubusercontent.com', "https://objects.githubusercontent.com/x\n", '', array( 'x' ) ) as $u ) {
 	confere( 'destino recusado ' . var_export( $u, true ), rastro_atualizador_regra_destino( $u ), false );
 }
 
@@ -348,11 +359,34 @@ $GLOBALS['t_pedidos'] = array();
 $erro                 = rastro_atualizador_baixar( 'https://evil.example/rastro.zip', 100 );
 confere( 'download fora do prefixo: recusado sem pedido', array( codigo_de( $erro ), count( $GLOBALS['t_pedidos'] ) ), array( 'rastro_atualizador_endereco', 0 ) );
 
-// Sem rede: erro, cache curto.
+// Leitura forçada reaproveita leitura boa recente (limite da API por IP).
+t_publicar( '1.1.0', $zip );
+rastro_atualizador_release();
+$GLOBALS['t_rede']    = array();
+$GLOBALS['t_pedidos'] = array();
+confere( 'forçada com leitura boa recente: sem pedido', array( rastro_atualizador_release( true )['ok'], count( $GLOBALS['t_pedidos'] ) ), array( true, 0 ) );
+$GLOBALS['t_site']['rastro_atualizador_release']['lido_em'] -= 700;
+$mantida = rastro_atualizador_release( true );
+confere( 'leitura falhou: mantém a última boa', array( $mantida['ok'], $mantida['versao'], count( $GLOBALS['t_pedidos'] ) ), array( true, '1.1.0', 1 ) );
+confere( 'leitura falhou: última boa por mais 30 min', $GLOBALS['t_site_ttl']['rastro_atualizador_release'], 1800 );
+$GLOBALS['t_site']['rastro_atualizador_release']['lido_em'] -= 3600;
+confere( 'leitura falhou e a boa tem mais de 1 h: some a oferta', rastro_atualizador_release( true )['ok'], false );
+
+// Sem rede e sem leitura anterior: erro, cache curto.
 $GLOBALS['t_rede'] = array();
 $GLOBALS['t_site'] = array();
 confere( 'sem rede: sem versão', rastro_atualizador_release()['ok'], false );
 confere( 'sem rede: cache de 30 min', $GLOBALS['t_site_ttl']['rastro_atualizador_release'], 1800 );
+
+// Corte das notas sem partir caractere.
+$cortado = rastro_atualizador_cortar( str_repeat( 'a', 9 ) . 'ção', 10 );
+confere( 'corte UTF-8 válido', 1 === preg_match( '//u', $cortado ), true );
+confere( 'corte no limite', strlen( $cortado ) <= 10, true );
+
+// Espera da atualização automática.
+confere( 'espera: 48 h passadas', rastro_atualizador_regra_espera( '2026-11-01T00:00:00Z', strtotime( '2026-11-03T00:00:01Z' ), 172800 ), true );
+confere( 'espera: menos de 48 h', rastro_atualizador_regra_espera( '2026-11-01T00:00:00Z', strtotime( '2026-11-02T23:59:59Z' ), 172800 ), false );
+confere( 'espera: data inválida', rastro_atualizador_regra_espera( 'ontem', time(), 172800 ), false );
 
 /* 4. Ganchos ------------------------------------------------------------------------- */
 
@@ -376,22 +410,45 @@ t_publicar( '1.0.0', $zip );
 $igual = rastro_atualizador_oferta( false, array(), 'rastro/rastro.php' );
 confere( 'pre_download: nunca a mesma versão ou menor', is_wp_error( rastro_atualizador_pre_download( false, $igual['package'] ) ), true );
 
+confere( 'download recusado apaga a conferência anterior', rastro_atualizador_esperada(), '' );
+
 // Pasta extraída.
+t_publicar( '1.1.0', $zip );
+$baixado = rastro_atualizador_pre_download( false, $oferta['package'] );
+if ( is_string( $baixado ) ) {
+	unlink( $baixado );
+}
 $extraida = $GLOBALS['t_tmp'] . '/extraida';
 mkdir( $extraida . '/rastro-main', 0777, true );
 file_put_contents( $extraida . '/rastro-main/rastro.php', "<?php\n/**\n * Plugin Name:       Rastro\n * Version:           1.1.0\n */\n" );
 confere( 'seleção: outro plugin intacto', rastro_atualizador_selecionar_pasta( 'S', 'R', null, array( 'plugin' => 'outro/outro.php' ) ), 'S' );
 $pasta = rastro_atualizador_selecionar_pasta( $extraida . '/rastro-main', $extraida, null, array( 'plugin' => 'rastro/rastro.php' ) );
 confere( 'seleção: pasta vira rastro/', $pasta, $extraida . '/rastro/' );
+confere( 'seleção: a conferência vale uma vez só', is_wp_error( rastro_atualizador_selecionar_pasta( $extraida . '/rastro/', $extraida, null, array( 'plugin' => 'rastro/rastro.php' ) ) ), true );
 file_put_contents( $extraida . '/rastro/rastro.php', "<?php\n/**\n * Plugin Name:       Rastro\n * Version:           1.0.9\n */\n" );
+rastro_atualizador_esperada( '1.1.0' );
 confere( 'seleção: versão diferente da conferida', is_wp_error( rastro_atualizador_selecionar_pasta( $extraida . '/rastro/', $extraida, null, array( 'plugin' => 'rastro/rastro.php' ) ) ), true );
 file_put_contents( $extraida . '/rastro/rastro.php', "<?php\n/**\n * Plugin Name:       Outro\n * Version:           1.1.0\n */\n" );
+rastro_atualizador_esperada( '1.1.0' );
 confere( 'seleção: outro plugin no pacote', is_wp_error( rastro_atualizador_selecionar_pasta( $extraida . '/rastro/', $extraida, null, array( 'plugin' => 'rastro/rastro.php' ) ) ), true );
 confere( 'seleção: pasta fora da extração', is_wp_error( rastro_atualizador_preparar_pasta( '/outro/lugar/', $extraida, '1.1.0' ) ), true );
 
 $item = (object) array( 'plugin' => 'rastro/rastro.php' );
-confere( 'atualização automática ligada', rastro_atualizador_auto( false, $item ), true );
-confere( 'atualização automática: outro plugin intacto', rastro_atualizador_auto( false, (object) array( 'plugin' => 'x/x.php' ) ), false );
+t_publicar( '1.1.0', $zip, array( 'data' => '2026-01-01T00:00:00Z' ) );
+confere( 'automática: pergunta se é forçada (null) fica null', rastro_atualizador_auto( null, $item ), null );
+confere( 'automática: desligada pelo site fica desligada', rastro_atualizador_auto( false, $item ), false );
+confere( 'automática: ligada e versão antiga', rastro_atualizador_auto( true, $item ), true );
+t_publicar( '1.1.0', $zip, array( 'data' => gmdate( 'Y-m-d\TH:i:s\Z' ) ) );
+confere( 'automática: versão publicada há menos de 48 h espera', rastro_atualizador_auto( true, $item ), false );
+confere( 'automática: outro plugin intacto', rastro_atualizador_auto( true, (object) array( 'plugin' => 'x/x.php' ) ), true );
+
+rastro_teste_reset( array( 'capacidades' => array( 'update_plugins' => true ) ) );
+$GLOBALS['t_opcoes_site'] = array( 'auto_update_plugins' => array( 'outro/outro.php' ) );
+rastro_atualizador_auto_padrao();
+confere( 'automática: entra na lista do site uma vez', $GLOBALS['t_opcoes_site']['auto_update_plugins'], array( 'outro/outro.php', 'rastro/rastro.php' ) );
+$GLOBALS['t_opcoes_site']['auto_update_plugins'] = array( 'outro/outro.php' );
+rastro_atualizador_auto_padrao();
+confere( 'automática: escolha do site respeitada depois', $GLOBALS['t_opcoes_site']['auto_update_plugins'], array( 'outro/outro.php' ) );
 
 t_publicar( '1.1.0', $zip );
 $info = rastro_atualizador_detalhes( false, 'plugin_information', (object) array( 'slug' => 'rastro' ) );
@@ -400,11 +457,11 @@ confere( 'detalhes: notas escapadas', false === strpos( $info->sections['changel
 confere( 'detalhes: outro slug intacto', rastro_atualizador_detalhes( 'r', 'plugin_information', (object) array( 'slug' => 'outro' ) ), 'r' );
 
 define( 'RASTRO_ATUALIZAR_AUTO', false );
-confere( 'atualização automática desligada pela constante', rastro_atualizador_auto( false, $item ), false );
+confere( 'automática desligada pela constante', rastro_atualizador_auto( true, $item ), false );
 
 /* 5. Textos -------------------------------------------------------------------------- */
 
-foreach ( array( 'versao', 'endereco', 'download', 'tamanho', 'checksum', 'assinatura', 'pacote', 'outro' ) as $codigo ) {
+foreach ( array( 'versao', 'endereco', 'download', 'tamanho', 'checksum', 'assinatura', 'pacote', 'sodium', 'outro' ) as $codigo ) {
 	$texto = rastro_atualizador_texto_erro( $codigo );
 	confere( "texto {$codigo} sem a plataforma", preg_match( '/git' . 'hub/i', $texto ), 0 );
 	confere( "texto {$codigo} diz que nada foi instalado", false !== strpos( $texto, 'Nada foi instalado' ), true );

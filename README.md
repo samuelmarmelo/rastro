@@ -23,10 +23,12 @@ carregadas fora do caminho crítico da página.
 3. No WordPress: Plugins, Adicionar, Enviar plugin. Ative e configure em
    Rastro.
 
-Depois disso o Rastro se atualiza sozinho pelas versões publicadas aqui.
-Antes de instalar qualquer versão, o plugin confere o tamanho, o SHA-256 e a
+Depois disso o Rastro se atualiza pelas versões publicadas aqui. Antes de
+instalar qualquer versão, o plugin confere o tamanho, o SHA-256 e a
 assinatura Ed25519 do pacote com as chaves de `rastro/atualizacao/chaves.php`.
-Para desligar a atualização automática, no `wp-config.php`:
+A atualização automática vem ligada (dá para desligar na tela Plugins) e só
+instala versão publicada há 48 h ou mais. Para desligar de vez, no
+`wp-config.php`:
 
 ```php
 define( 'RASTRO_ATUALIZAR_AUTO', false );
